@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bpod State Matrix Parser</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .output-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            background: #3498db;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .input-textarea {
+            width: 100%;
+            height: 200px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+
+        .input-textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .parse-button {
+            width: 100%;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .parse-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(46, 204, 113, 0.3);
+        }
+
+        .parse-button:active {
+            transform: translateY(0);
+        }
+
+        .parse-button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .output-container {
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .parse-log-container {
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            margin-top: 0px;
+        }
+
+        .output-content {
+            padding: 2px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .success-message {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        .warning-message {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .header-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .compact-stat-card {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.6em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .compact-stat-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .compact-stat-label {
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .format-example {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 10px 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Bpod 2+ State Matrix Parser</h1>
+            <p>State machine analyzer</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">
+                    <span class="icon">📥</span>
+                    Input Data
+                </h2>
+                
+                <div class="info-box">
+                    <h3>Supported Formats:</h3>
+                    <ul>
+                        <li><strong>Tuple Format:</strong> List of (array, dtype) tuples</li>
+                    </ul>
+                </div>
+
+                <textarea 
+                    class="input-textarea" 
+                    id="inputData" 
+                    placeholder="Paste your data here...
+
+Example tuple format:
+(([67, 0, 0], 'uint8'), ([128], 'uint16'), ([5, 1, 1, 0], 'uint8'), ...)
+"
+                ></textarea>
+
+                <button class="parse-button" id="parseButton" onclick="parseData()">
+                    🚀 Parse State Matrix
+                </button>
+
+                <div class="format-example">
+                    <strong>Expected header format:</strong><br>
+                    • First tuple: ([67, runASAP, use255Signal], 'uint8') - State matrix command<br>
+                    &nbsp;&nbsp;◦ 67 = 'C' opcode for state matrix<br>
+                    &nbsp;&nbsp;◦ runASAP = RunStateMatrixASAP flag (0/1)<br>
+                    &nbsp;&nbsp;◦ use255Signal = using255BackSignal flag (0/1)<br>
+                    • Second tuple: ([byte_count], 'uint16') - Total bytes transmitted
+                </div>
+            </div>
+
+            <div class="output-section">
+                <h2 class="section-title">
+                    <span class="icon">📊</span>
+                    Analysis Results
+                </h2>
+
+                <div id="outputContainer" class="output-container">
+                    <div class="output-content" id="outputContent">
+                        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                            <div style="font-size: 3em; margin-bottom: 20px;">🎯</div>
+                            <h3>Ready to Parse</h3>
+                            <p>Paste your Bpod state matrix data and click parse to begin analysis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class BpodStateMatrixParser {
+            constructor() {
+                this.nStates = 0;
+                this.nGlobalTimersUsed = 0;
+                this.nGlobalCountersUsed = 0;
+                this.nConditionsUsed = 0;
+                this.bufferPos = 0;
+                
+                this.MAX_GLOBAL_TIMERS = 16;
+                this.MAX_GLOBAL_COUNTERS = 8;
+                this.MAX_CONDITIONS = 16;
+                this.InputMatrixSize = 97;
+                this.OutputMatrixSize = 21;
+                
+                this.resetMatrices();
+            }
+            
+            resetMatrices() {
+                if (this.nStates > 0) {
+                    this.smGlobalTimerTrig = new Uint32Array(this.nStates);
+                    this.smGlobalTimerCancel = new Uint32Array(this.nStates);
+                    this.smGlobalCounterReset = new Uint8Array(this.nStates);
+                    this.StateTimerMatrix = new Uint8Array(this.nStates);
+                    this.OutputStateMatrix = Array(this.nStates).fill().map(() => new Uint16Array(this.OutputMatrixSize));
+                    this.StateTimers = new Uint32Array(this.nStates);
+                    
+                    this.InputStateMatrix = Array(this.nStates).fill().map((_, x) => 
+                        new Uint8Array(this.InputMatrixSize).fill(x)
+                    );
+                    
+                    this.GlobalTimerStartMatrix = Array(this.nStates).fill().map((_, x) => 
+                        new Uint8Array(this.MAX_GLOBAL_TIMERS).fill(x)
+                    );
+                    this.GlobalTimerEndMatrix = Array(this.nStates).fill().map((_, x) => 
+                        new Uint8Array(this.MAX_GLOBAL_TIMERS).fill(x)
+                    );
+                    this.GlobalCounterMatrix = Array(this.nStates).fill().map((_, x) => 
+                        new Uint8Array(this.MAX_GLOBAL_COUNTERS).fill(x)
+                    );
+                    this.ConditionMatrix = Array(this.nStates).fill().map((_, x) => 
+                        new Uint8Array(this.MAX_CONDITIONS).fill(x)
+                    );
+                }
+                
+                this.GlobalTimerChannel = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnMessage = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOffMessage = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerLoop = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GTUsingLoopCounter = new Array(this.MAX_GLOBAL_TIMERS).fill(false);
+                this.SendGlobalTimerEvents = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimers = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnsetDelays = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerLoopIntervals = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnsetTriggers = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                
+                this.GlobalCounterAttachedEvents = new Uint8Array(this.MAX_GLOBAL_COUNTERS);
+                this.GlobalCounterThresholds = new Uint32Array(this.MAX_GLOBAL_COUNTERS);
+                
+                this.ConditionChannels = new Uint8Array(this.MAX_CONDITIONS);
+                this.ConditionValues = new Uint32Array(this.MAX_CONDITIONS);
+            }
+
+            createBufferFromArrays(bufferArrays) {
+                const bufferParts = [];
+                
+                for (const [arrayData, dtype] of bufferArrays) {
+                    let typedArray;
+                    switch (dtype) {
+                        case 'uint8': typedArray = new Uint8Array(arrayData); break;
+                        case 'uint16': typedArray = new Uint16Array(arrayData); break;
+                        case 'uint32': typedArray = new Uint32Array(arrayData); break;
+                        default: throw new Error(`Unsupported dtype: ${dtype}`);
+                    }
+                    bufferParts.push(new Uint8Array(typedArray.buffer));
+                }
+                
+                const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
+                const result = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const part of bufferParts) {
+                    result.set(part, offset);
+                    offset += part.length;
+                }
+                
+                return result;
+            }
+
+            readFromBuffer(buffer, dtype, count = 1) {
+                const bytesPerElement = dtype === 'uint8' ? 1 : dtype === 'uint16' ? 2 : 4;
+                const totalBytes = bytesPerElement * count;
+                
+                if (this.bufferPos + totalBytes > buffer.length) {
+                    throw new Error(`Buffer overflow: trying to read ${totalBytes} bytes at position ${this.bufferPos}, buffer size ${buffer.length}`);
+                }
+                
+                const dataView = new DataView(buffer.buffer, buffer.byteOffset + this.bufferPos, totalBytes);
+                this.bufferPos += totalBytes;
+                
+                if (count === 1) {
+                    switch (dtype) {
+                        case 'uint8': return dataView.getUint8(0);
+                        case 'uint16': return dataView.getUint16(0, true);
+                        case 'uint32': return dataView.getUint32(0, true);
+                    }
+                } else {
+                    const result = [];
+                    for (let i = 0; i < count; i++) {
+                        const offset = i * bytesPerElement;
+                        switch (dtype) {
+                            case 'uint8': result.push(dataView.getUint8(offset)); break;
+                            case 'uint16': result.push(dataView.getUint16(offset, true)); break;
+                            case 'uint32': result.push(dataView.getUint32(offset, true)); break;
+                        }
+                    }
+                    return result;
+                }
+            }
+
+            loadStateMatrix(bufferArrays, machineType = 4) {
+
+                const buffer = this.createBufferFromArrays(bufferArrays);
+
+                this.bufferPos = 0;
+                
+                // Read header information
+                let output = "\n--- Reading Header Information ---\n";
+                this.nStates = this.readFromBuffer(buffer, 'uint8');
+                output += `nStates = ${this.nStates}\n`;
+                
+                this.nGlobalTimersUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nGlobalTimersUsed = ${this.nGlobalTimersUsed}\n`;
+                
+                this.nGlobalCountersUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nGlobalCountersUsed = ${this.nGlobalCountersUsed}\n`;
+                
+                this.nConditionsUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nConditionsUsed = ${this.nConditionsUsed}\n\n`;
+                
+                // Reset matrices with new dimensions
+                this.resetMatrices();
+                
+                // Read State Timer Matrix
+                output += "--- Reading State Timer Matrix ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const timerVal = this.readFromBuffer(buffer, 'uint8');
+                    this.StateTimerMatrix[x] = timerVal;
+                    output += `StateTimerMatrix[${x}] = ${timerVal}\n`;
+                }
+                output += "\n";
+                
+                // Read Input State Matrix differences
+                output += "--- Reading Input State Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `State ${x}: ${nOverrides} input overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        this.InputStateMatrix[x][col] = val;
+                        output += `  InputStateMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Output State Matrix differences
+                output += "--- Reading Output State Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    let nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    
+                    if (machineType === 4) {
+                        const highByte = this.readFromBuffer(buffer, 'uint8');
+                        nOverrides = nOverrides | (highByte << 8);
+                    }
+                    
+                    output += `State ${x}: ${nOverrides} output overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        let col = this.readFromBuffer(buffer, 'uint8');
+                        
+                        if (machineType === 4) {
+                            const highByte = this.readFromBuffer(buffer, 'uint8');
+                            col = col | (highByte << 8);
+                        }
+                        
+                        let val = this.readFromBuffer(buffer, 'uint8');
+                        
+                        if (machineType === 4) {
+                            const highByte = this.readFromBuffer(buffer, 'uint8');
+                            val = val | (highByte << 8);
+                        }
+                        
+                        this.OutputStateMatrix[x][col] = val;
+                        output += `  OutputStateMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Global Timer Start Matrix differences
+                output += "--- Reading Global Timer Start Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `State ${x}: ${nOverrides} global timer start overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        this.GlobalTimerStartMatrix[x][col] = val;
+                        output += `  GlobalTimerStartMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Global Timer End Matrix differences
+                output += "--- Reading Global Timer End Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `State ${x}: ${nOverrides} global timer end overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        this.GlobalTimerEndMatrix[x][col] = val;
+                        output += `  GlobalTimerEndMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Global Counter Matrix differences
+                output += "--- Reading Global Counter Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `State ${x}: ${nOverrides} global counter overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        this.GlobalCounterMatrix[x][col] = val;
+                        output += `  GlobalCounterMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Condition Matrix differences
+                output += "--- Reading Condition Matrix Differences ---\n";
+                for (let x = 0; x < this.nStates; x++) {
+                    const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `State ${x}: ${nOverrides} condition overrides\n`;
+                    for (let y = 0; y < nOverrides; y++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        this.ConditionMatrix[x][col] = val;
+                        output += `  ConditionMatrix[${x}][${col}] = ${val}\n`;
+                    }
+                }
+                output += "\n";
+                
+                // Read Global Timer configuration (if any timers are used)
+                if (this.nGlobalTimersUsed > 0) {
+                    output += "--- Reading Global Timer Configuration ---\n";
+                    
+                    this.GlobalTimerChannel.set(this.readFromBuffer(buffer, 'uint8', this.nGlobalTimersUsed));
+                    output += `GlobalTimerChannel = [${Array.from(this.GlobalTimerChannel.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    
+                    this.GlobalTimerOnMessage.set(this.readFromBuffer(buffer, 'uint16', this.nGlobalTimersUsed));
+                    output += `GlobalTimerOnMessage = [${Array.from(this.GlobalTimerOnMessage.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    
+                    this.GlobalTimerOffMessage.set(this.readFromBuffer(buffer, 'uint16', this.nGlobalTimersUsed));
+                    output += `GlobalTimerOffMessage = [${Array.from(this.GlobalTimerOffMessage.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    
+                    for (let i = 0; i < this.nGlobalTimersUsed; i++) {
+                        const loopVal = this.readFromBuffer(buffer, 'uint8');
+                        this.GlobalTimerLoop[i] = loopVal;
+                        this.GTUsingLoopCounter[i] = loopVal > 1;
+                        output += `GlobalTimerLoop[${i}] = ${loopVal}, GTUsingLoopCounter[${i}] = ${this.GTUsingLoopCounter[i]}\n`;
+                    }
+                    
+                    this.SendGlobalTimerEvents.set(this.readFromBuffer(buffer, 'uint8', this.nGlobalTimersUsed));
+                    output += `SendGlobalTimerEvents = [${Array.from(this.SendGlobalTimerEvents.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    output += "\n";
+                }
+                
+                // Read Global Counter configuration (if any counters are used)
+                if (this.nGlobalCountersUsed > 0) {
+                    output += "--- Reading Global Counter Configuration ---\n";
+                    this.GlobalCounterAttachedEvents.set(this.readFromBuffer(buffer, 'uint8', this.nGlobalCountersUsed));
+                    output += `GlobalCounterAttachedEvents = [${Array.from(this.GlobalCounterAttachedEvents.slice(0, this.nGlobalCountersUsed)).join(', ')}]\n`;
+                    output += "\n";
+                }
+                
+                // Read Condition configuration (if any conditions are used)
+                if (this.nConditionsUsed > 0) {
+                    output += "--- Reading Condition Configuration ---\n";
+                    this.ConditionChannels.set(this.readFromBuffer(buffer, 'uint8', this.nConditionsUsed));
+                    output += `ConditionChannels = [${Array.from(this.ConditionChannels.slice(0, this.nConditionsUsed)).join(', ')}]\n`;
+                    
+                    this.ConditionValues.set(this.readFromBuffer(buffer, 'uint32', this.nConditionsUsed));
+                    output += `ConditionValues = [${Array.from(this.ConditionValues.slice(0, this.nConditionsUsed)).join(', ')}]\n`;
+                    output += "\n";
+                }
+                
+                // Read Global Counter Reset configuration
+                output += "--- Reading Global Counter Reset Configuration ---\n";
+                const nOverrides = this.readFromBuffer(buffer, 'uint8');
+                output += `Global counter reset overrides: ${nOverrides}\n`;
+                for (let i = 0; i < nOverrides; i++) {
+                    const col = this.readFromBuffer(buffer, 'uint8');
+                    const val = this.readFromBuffer(buffer, 'uint8');
+                    this.smGlobalCounterReset[col] = val;
+                    output += `  smGlobalCounterReset[${col}] = ${val}\n`;
+                }
+                output += "\n";
+                
+                // Read analog threshold configuration (for machine type 4)
+                if (machineType === 4) {
+                    output += "--- Reading Analog Threshold Configuration ---\n";
+                    
+                    // Analog threshold enable
+                    const nEnableOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `Analog threshold enable overrides: ${nEnableOverrides}\n`;
+                    for (let i = 0; i < nEnableOverrides; i++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        output += `  analogThreshEnable[${col}] = ${val}\n`;
+                    }
+                    
+                    // Analog threshold disable
+                    const nDisableOverrides = this.readFromBuffer(buffer, 'uint8');
+                    output += `Analog threshold disable overrides: ${nDisableOverrides}\n`;
+                    for (let i = 0; i < nDisableOverrides; i++) {
+                        const col = this.readFromBuffer(buffer, 'uint8');
+                        const val = this.readFromBuffer(buffer, 'uint8');
+                        output += `  analogThreshDisable[${col}] = ${val}\n`;
+                    }
+                    output += "\n";
+                }
+                
+                // Read trigger and timing arrays
+                output += "--- Reading Trigger and Timing Arrays ---\n";
+                
+                this.smGlobalTimerTrig.set(this.readFromBuffer(buffer, 'uint16', this.nStates));
+                output += `smGlobalTimerTrig = [${Array.from(this.smGlobalTimerTrig.slice(0, this.nStates)).join(', ')}]\n`;
+                
+                this.smGlobalTimerCancel.set(this.readFromBuffer(buffer, 'uint16', this.nStates));
+                output += `smGlobalTimerCancel = [${Array.from(this.smGlobalTimerCancel.slice(0, this.nStates)).join(', ')}]\n`;
+                
+                if (this.nGlobalTimersUsed > 0) {
+                    this.GlobalTimerOnsetTriggers.set(this.readFromBuffer(buffer, 'uint16', this.nGlobalTimersUsed));
+                    output += `GlobalTimerOnsetTriggers = [${Array.from(this.GlobalTimerOnsetTriggers.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                }
+                
+                this.StateTimers.set(this.readFromBuffer(buffer, 'uint32', this.nStates));
+                output += `StateTimers = [${Array.from(this.StateTimers.slice(0, this.nStates)).join(', ')}]\n`;
+                
+                if (this.nGlobalTimersUsed > 0) {
+                    this.GlobalTimers.set(this.readFromBuffer(buffer, 'uint32', this.nGlobalTimersUsed));
+                    output += `GlobalTimers = [${Array.from(this.GlobalTimers.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    
+                    this.GlobalTimerOnsetDelays.set(this.readFromBuffer(buffer, 'uint32', this.nGlobalTimersUsed));
+                    output += `GlobalTimerOnsetDelays = [${Array.from(this.GlobalTimerOnsetDelays.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                    
+                    this.GlobalTimerLoopIntervals.set(this.readFromBuffer(buffer, 'uint32', this.nGlobalTimersUsed));
+                    output += `GlobalTimerLoopIntervals = [${Array.from(this.GlobalTimerLoopIntervals.slice(0, this.nGlobalTimersUsed)).join(', ')}]\n`;
+                }
+                
+                if (this.nGlobalCountersUsed > 0) {
+                    this.GlobalCounterThresholds.set(this.readFromBuffer(buffer, 'uint32', this.nGlobalCountersUsed));
+                    output += `GlobalCounterThresholds = [${Array.from(this.GlobalCounterThresholds.slice(0, this.nGlobalCountersUsed)).join(', ')}]\n`;
+                }
+                output += "\n";
+                
+                // Read additional operations
+                output += "--- Reading Additional Operations ---\n";
+                let containsAdditionalOps = this.readFromBuffer(buffer, 'uint8');
+                output += `Contains additional operations: ${containsAdditionalOps}\n`;
+                
+                while (containsAdditionalOps) {
+                    const thisOp = this.readFromBuffer(buffer, 'uint8');
+                    output += `Additional operation: ${String.fromCharCode(thisOp)} (${thisOp})\n`;
+                    
+                    if (thisOp === 76) { // 'L'
+                        output += "  Loading serial message library\n";
+                        const moduleId = this.readFromBuffer(buffer, 'uint8');
+                        const nMessages = this.readFromBuffer(buffer, 'uint8');
+                        output += `    Module ID: ${moduleId}, Number of messages: ${nMessages}\n`;
+                        
+                        for (let i = 0; i < nMessages; i++) {
+                            const msgIndex = this.readFromBuffer(buffer, 'uint8');
+                            const msgLength = this.readFromBuffer(buffer, 'uint8');
+                            output += `    Message ${msgIndex}: length ${msgLength}\n`;
+                            
+                            const msgData = this.readFromBuffer(buffer, 'uint8', msgLength);
+                            output += `      Data: [${msgData.join(', ')}]\n`;
+                        }
+                    }
+                    
+                    containsAdditionalOps = this.readFromBuffer(buffer, 'uint8');
+                }
+                
+                output += `\n=== State Matrix Loading Complete ===\n`;
+                output += `Total bytes processed: ${this.bufferPos}\n`;
+                output += `Buffer size: ${buffer.length}`;
+                
+                const remainingBytes = buffer.length - this.bufferPos;
+                const result = {
+                    output,
+                    success: true,
+                    stats: {
+                        nStates: this.nStates,
+                        nGlobalTimersUsed: this.nGlobalTimersUsed,
+                        nGlobalCountersUsed: this.nGlobalCountersUsed,
+                        nConditionsUsed: this.nConditionsUsed,
+                        totalBytes: buffer.length,
+                        processedBytes: this.bufferPos,
+                        remainingBytes
+                    },
+                    warning: remainingBytes > 0 ? `WARNING: ${remainingBytes} bytes remaining in buffer` : null
+                };
+                
+                return result;
+            }
+        }
+
+        function tuplesToRawBytes(tuples) {
+            const bufferParts = [];
+            
+            for (const [arrayData, dtype] of tuples) {
+                let typedArray;
+                switch (dtype) {
+                    case 'uint8': 
+                        typedArray = new Uint8Array(arrayData); 
+                        break;
+                    case 'uint16': 
+                        typedArray = new Uint16Array(arrayData); 
+                        break;
+                    case 'uint32': 
+                        typedArray = new Uint32Array(arrayData); 
+                        break;
+                    default: 
+                        throw new Error(`Unsupported dtype: ${dtype}`);
+                }
+                bufferParts.push(new Uint8Array(typedArray.buffer));
+            }
+            
+            // Combine all parts into one byte array
+            const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
+            const result = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const part of bufferParts) {
+                result.set(part, offset);
+                offset += part.length;
+            }
+            
+            return result;
+        }
+
+        function parseRawBytes(rawBytes) {
+            // Skip the 5-byte header (3 bytes command + 2 bytes length)
+            const dataBytes = rawBytes.slice(5);
+            return [([Array.from(dataBytes)], 'uint8')];
+        }
+
+        function parseInput(inputText) {
+            inputText = inputText.trim();
+            
+            // Parse tuple format
+            if (inputText.startsWith('((') && inputText.endsWith('))')) {
+                try {
+                    // Clean up the input and evaluate it as JavaScript
+                    const cleanInput = inputText
+                        .replace(/\(/g, '[')
+                        .replace(/\)/g, ']')
+                        .replace(/'(\w+)'/g, '"$1"');
+                    
+                    const parsed = eval(cleanInput);
+                    
+                    // Skip the first two header tuples and return the rest
+                    return parsed.slice(2);
+                } catch (e) {
+                    throw new Error(`Failed to parse tuple format: ${e.message}`);
+                }
+            }
+            
+            // Check if it's raw bytes format
+            if (inputText.startsWith('b"') && inputText.endsWith('"')) {
+                // Parse raw bytes
+                const bytesStr = inputText.slice(2, -1);
+                const bytes = [];
+                let i = 0;
+                while (i < bytesStr.length) {
+                    if (bytesStr[i] === '\\' && bytesStr[i + 1] === 'x') {
+                        // Hex escape sequence
+                        const hex = bytesStr.substring(i + 2, i + 4);
+                        bytes.push(parseInt(hex, 16));
+                        i += 4;
+                    } else {
+                        // Regular character
+                        bytes.push(bytesStr.charCodeAt(i));
+                        i++;
+                    }
+                }
+                
+                // For raw bytes, return ALL bytes as a single uint8 array
+                // The parser will handle the structure internally
+                const dataBytes = bytes.slice(5);
+                return [([dataBytes], 'uint8')];
+            }
+            
+            throw new Error('Input format not recognized. Expected tuple format or raw bytes format.');
+        }
+
+        function validateHeader(inputText) {
+            inputText = inputText.trim();
+            
+            // Handle tuple format
+            const cleanInput = inputText
+                .replace(/\(/g, '[')
+                .replace(/\)/g, ']')
+                .replace(/'(\w+)'/g, '"$1"');
+            
+            try {
+                const parsed = eval(cleanInput);
+                
+                if (parsed.length < 2) {
+                    return { valid: false, error: 'Missing header information' };
+                }
+                
+                const [commandTuple, lengthTuple] = parsed;
+                
+                // Validate command tuple
+                if (!Array.isArray(commandTuple) || commandTuple.length !== 2) {
+                    return { valid: false, error: 'Invalid command tuple format' };
+                }
+                
+                const [commandArray, commandType] = commandTuple;
+                if (!Array.isArray(commandArray) || commandArray[0] !== 67) {
+                    return { valid: false, error: 'Expected command code C (67) in first tuple' };
+                }
+                
+                // Validate length tuple
+                if (!Array.isArray(lengthTuple) || lengthTuple.length !== 2) {
+                    return { valid: false, error: 'Invalid length tuple format' };
+                }
+                
+                const [lengthArray, lengthType] = lengthTuple;
+                if (!Array.isArray(lengthArray) || lengthArray.length !== 1) {
+                    return { valid: false, error: 'Invalid length array' };
+                }
+                
+                const expectedBytes = lengthArray[0];
+                
+                // Calculate actual bytes from remaining tuples
+                let actualBytes = 0;
+                for (let i = 2; i < parsed.length; i++) {
+                    const [dataArray, dataType] = parsed[i];
+                    const bytesPerElement = dataType === 'uint8' ? 1 : dataType === 'uint16' ? 2 : 4;
+                    actualBytes += dataArray.length * bytesPerElement;
+                }
+                
+                return {
+                    valid: true,
+                    expectedBytes,
+                    actualBytes,
+                    opcode: commandArray[0],
+                    runStateMatrixASAP: commandArray[1],
+                    using255BackSignal: commandArray[2],
+                    mismatch: expectedBytes !== actualBytes
+                };
+                
+            } catch (e) {
+                return { valid: false, error: `Parse error validateHeader: ${e.message}` };
+            }
+        }
+        async function parseData() {
+            const inputElement = document.getElementById('inputData');
+            const outputElement = document.getElementById('outputContent');
+            const parseButton = document.getElementById('parseButton');
+            
+            const inputText = inputElement.value.trim();
+            
+            if (!inputText) {
+                outputElement.innerHTML = `
+                    <div class="error-message">
+                        ❌ Error: Please enter some data to parse
+                    </div>
+                `;
+                return;
+            }
+            
+            // Show loading state
+            parseButton.disabled = true;
+            parseButton.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Parsing...
+                </div>
+            `;
+            
+            try {
+                // Validate header first
+                const headerValidation = validateHeader(inputText);
+                
+                if (!headerValidation.valid) {
+                    throw new Error(headerValidation.error);
+                }
+                
+                // Create stats display - start with byte count validation at the top
+                let statsHtml = '';
+                
+                // Show byte count validation first with larger, bold text
+                if (headerValidation.mismatch) {
+                    statsHtml += `
+                        <div class="error-message" style="font-size: 1.3em; font-weight: bold; margin-bottom: 5px;">
+🚨 Byte Count Mismatch: Expected ${headerValidation.expectedBytes} bytes but found ${headerValidation.actualBytes} bytes
+                        </div>
+                    `;
+                } else {
+                    statsHtml += `
+                        <div class="success-message" style="font-size: 1.3em; font-weight: bold; margin-bottom: 5px;">
+✅ Expected and actual bytes match (${headerValidation.expectedBytes} bytes)
+                        </div>
+                    `;
+                }
+
+                // Then add the header stats grid
+                statsHtml += `
+                    <div class="header-stats-grid">
+                        <div class="compact-stat-card">
+                            <div class="compact-stat-label">Opcode</div>
+                            <div class="compact-stat-value">${headerValidation.opcode} ('C')</div>
+                        </div>
+                        <div class="compact-stat-card">
+                            <div class="compact-stat-label">Run ASAP</div>
+                            <div class="compact-stat-value">${headerValidation.runStateMatrixASAP ? 'Yes' : 'No'}</div>
+                        </div>
+                        <div class="compact-stat-card">
+                            <div class="compact-stat-label">Using 255 Back Signal</div>
+                            <div class="compact-stat-value">${headerValidation.using255BackSignal ? 'Yes' : 'No'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Parse the buffer arrays
+                const bufferArrays = parseInput(inputText);
+                
+                // Create parser and process
+                const parser = new BpodStateMatrixParser();
+                const result = await new Promise((resolve) => {
+                    setTimeout(() => {
+                        try {
+                            const parseResult = parser.loadStateMatrix(bufferArrays);
+                            resolve(parseResult);
+                        } catch (error) {
+                            resolve({ success: false, error: error.message });
+                        }
+                    }, 100);
+                });
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                // Add final stats
+                statsHtml += `
+                    <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                        <div class="stat-card">
+                            <div class="stat-value">${result.stats.nStates}</div>
+                            <div class="compact-stat-label">States</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${result.stats.nGlobalTimersUsed}</div>
+                            <div class="compact-stat-label">Global Timers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${result.stats.nGlobalCountersUsed}</div>
+                            <div class="compact-stat-label">Global Counters</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${result.stats.nConditionsUsed}</div>
+                            <div class="compact-stat-label">Conditions</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (result.warning) {
+                    statsHtml += `
+                        <div class="warning-message">
+                            ⚠️ ${result.warning}
+                        </div>
+                    `;
+                }
+                
+                outputElement.innerHTML = statsHtml + `
+                    <h2 style="margin: 20px 0 0 0; color: #2c3e50;">📋 Detailed Parse Log</h2>
+                    <div style="font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.4; white-space: pre; margin-top: -20px;">
+                    ${result.output}
+                    </div>
+                `;
+                
+            } catch (error) {
+                outputElement.innerHTML = `
+                    <div class="error-message">
+                        ❌ Parse Error: ${error.message}
+                    </div>
+                    <div style="background: white; border-radius: 10px; border: 2px solid #e74c3c; margin-top: 20px; padding: 20px;">
+                        <h3 style="color: #e74c3c; margin-bottom: 15px;">🔧 Troubleshooting Tips:</h3>
+                        <ul style="color: #666; line-height: 1.6;">
+                            <li>Ensure your data starts with the command tuple: <code>([67, runASAP, use255Signal], 'uint8')</code></li>
+                            <li>First byte (67) = 'C' opcode for state matrix</li>
+                            <li>Second byte = RunStateMatrixASAP flag (0 or 1)</li>
+                            <li>Third byte = using255BackSignal flag (0 or 1)</li>
+                            <li>Include the byte count tuple: <code>([expected_bytes], 'uint16')</code></li>
+                            <li>Check that all arrays and data types are properly formatted</li>
+                            <li>Verify that the total byte count matches the expected count</li>
+                        </ul>
+                    </div>
+                `;
+            } finally {
+                // Restore button state
+                parseButton.disabled = false;
+                parseButton.innerHTML = '🚀 Parse State Matrix';
+            }
+        }
+
+        // Add example data functionality
+        function loadExample() {
+            const exampleData = `(([67, 0, 0], 'uint8'), ([128], 'uint16'), ([5, 1, 1, 0, 1, 1, 1, 4, 5, 0, 1, 83, 2, 0, 0, 0], 'uint8'), ([0, 0, 1, 9, 1, 1, 10, 1, 0], 'uint16'), ([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3, 0, 0, 0, 0, 0, 0, 0, 255], 'uint8'), ([1, 254], 'uint16'), ([0, 1, 97, 1, 1, 1, 0, 0], 'uint8'), ([0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0], 'uint16'), ([20000, 0, 2000, 1000, 10000, 1000, 0, 0, 5], 'uint32'), ([0], 'uint8'))`;
+            
+            document.getElementById('inputData').value = exampleData;
+        }
+
+        // Add keyboard shortcut
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                parseData();
+            }
+        });
+
+        // Add example button to the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputSection = document.querySelector('.input-section');
+            const exampleButton = document.createElement('button');
+            exampleButton.innerHTML = '📄 Load Example Data';
+            exampleButton.style.cssText = `
+                width: 100%;
+                background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 0.9em;
+                font-weight: 500;
+                cursor: pointer;
+                margin-top: 10px;
+                transition: all 0.3s ease;
+            `;
+            exampleButton.onmouseover = function() {
+                this.style.transform = 'translateY(-1px)';
+                this.style.boxShadow = '0 5px 15px rgba(155, 89, 182, 0.3)';
+            };
+            exampleButton.onmouseout = function() {
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'none';
+            };
+            exampleButton.onclick = loadExample;
+            
+            inputSection.appendChild(exampleButton);
+        });
+    </script>
+</body>
+</html>
