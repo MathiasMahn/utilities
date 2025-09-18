@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coordinate Angle Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+
+        .visualization {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: white;
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .results h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            text-align: center;
+        }
+
+        .coord-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .coord-label {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .coord-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+            }
+        }
+
+        .legend {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .scale-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #1976d2;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Coordinate Angle Calculator</h1>
+            <p>Calculate new coordinates after tilting holder by specified angle</p>
+        </div>
+        
+        <div class="content">
+            <div class="controls">
+                <div class="form-group">
+                    <label for="ml-input">ML (Mediolateral) Coordinate:</label>
+                    <input type="number" id="ml-input" value="3.2" step="0.01">
+                </div>
+                
+                <div class="form-group">
+                    <label for="dv-input">DV (Dorsoventral) Coordinate:</label>
+                    <input type="number" id="dv-input" value="-4.8" step="0.01", max = "0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="angle-input">Tilt Angle (degrees):</label>
+                    <input type="number" id="angle-input" value="10" min="0" max="45" step="1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="direction-select">Tilt Direction:</label>
+                    <select id="direction-select">
+                        <option value="right">Right - clockwise</option>
+                        <option value="left">Left - counterclockwise</option>
+                    </select>
+                </div>
+                
+                <button class="calculate-btn" onclick="calculate()">Calculate New Coordinates</button>
+                
+                <div class="legend">
+                    <h4 style="margin: 0 0 10px 0;">Legend:</h4>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #000;"></div>
+                        <span>Original coordinates</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #007bff;"></div>
+                        <span>New coordinates</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff9800;"></div>
+                        <span>Tilted axes</span>
+                    </div>
+                </div>
+                
+                <div class="scale-info" id="scale-info">
+                    Scale: Auto-adjusting...
+                </div>
+            </div>
+            
+            <div class="visualization">
+                <canvas id="canvas" width="600" height="500"></canvas>
+                
+                <div class="results" id="results" style="display: none;">
+                    <h3>New Coordinates</h3>
+                    <div class="coord-result">
+                        <span class="coord-label">ML':</span>
+                        <span class="coord-value" id="ml-result">-</span>
+                    </div>
+                    <div class="coord-result">
+                        <span class="coord-label">DV':</span>
+                        <span class="coord-value" id="dv-result">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateAutoScale(canvas, coordinates) {
+            // Find the maximum absolute coordinate value
+            const maxCoordValue = Math.max(...coordinates.map(coord => Math.abs(coord)));
+            
+            // Calculate scale to use 80% of the available canvas space
+            const maxCanvasSize = Math.min(canvas.width, canvas.height) * 0.4;
+            
+            // Ensure minimum scale for readability but allow dynamic scaling
+            const calculatedScale = Math.max(maxCanvasSize / (maxCoordValue * 0.8), 5);
+            
+            return calculatedScale; // Remove cap to allow full dynamic scaling
+        }
+
+        function calculate() {
+            // Get input values
+            const x = parseFloat(document.getElementById('ml-input').value);
+            const z = parseFloat(document.getElementById('dv-input').value);
+            const angle = parseFloat(document.getElementById('angle-input').value);
+            const direction = document.getElementById('direction-select').value;
+            
+            let angleRad
+            // Convert angle to radians (fix: correct conversion)
+            if (direction === 'left') {
+                angleRad = angle * (Math.PI / 180);
+             } else {0.9
+                angleRad = (-angle) * (Math.PI / 180);
+             }
+            // Calculate new ML and DV values using rotation
+            const xc = x * Math.cos(angleRad) + z * Math.sin(angleRad);
+            const zc = -x * Math.sin(angleRad) + z * Math.cos(angleRad);            
+            
+            // Get canvas and clear it
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Set up coordinate system (canvas origin at center)
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 4;
+            
+            // Auto-calculate scale based on coordinate values
+            const allCoordinates = [x, z];
+            const scale = calculateAutoScale(canvas, allCoordinates);
+            
+            // Update scale info display
+            document.getElementById('scale-info').textContent = `Scale: ${scale.toFixed(1)} pixels/unit`;
+            
+            // Draw grid with auto-scaling
+            drawGrid(ctx, centerX, centerY, scale, canvas);
+            
+            // Transform coordinates for display
+            const displayX = x * scale;
+            const displayZ = -z * scale; // Flip Z for display (positive Z up)
+            
+            // Draw coordinate axes (original - black)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([]);
+            
+            // Draw tilted axes (orange)
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            
+            // Calculate tilted axis directions
+            const tiltedXAxisX = Math.cos(angleRad);
+            const tiltedXAxisY = Math.sin(angleRad);
+ 
+            // Draw tilted X-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX - tiltedXAxisX * scale * 10, centerY + tiltedXAxisY * scale * 10);
+            ctx.lineTo(centerX + tiltedXAxisX * scale * 10, centerY - tiltedXAxisY * scale * 10);
+            ctx.stroke();
+            
+            // Draw original coordinates (black lines)
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            // Line from origin to original point
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + displayX, centerY + displayZ);
+            ctx.stroke();
+            
+            // Draw new coordinates (blue lines)
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            
+            // Draw coordinate construction lines
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([2, 2]);
+            
+            // Original coordinate construction (perpendicular to original axes)
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + displayX, centerY);
+            ctx.lineTo(centerX + displayX, centerY + displayZ);
+            ctx.stroke();
+            
+            // End point of X component along tilted X-axis
+            const xCompEndX = centerX + xc * tiltedXAxisX * scale;
+            const xCompEndY = centerY - xc * tiltedXAxisY * scale;
+            
+            // Draw X component along tilted X-axis
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 3]);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(xCompEndX, xCompEndY);
+            ctx.lineTo(centerX + displayX, centerY + displayZ);
+            ctx.stroke();         
+            
+            // Draw points
+            drawPoint(ctx, centerX, centerY, '#ff0000', '');
+            drawPoint(ctx, centerX + displayX, centerY + displayZ, '#000', `Target (${x.toFixed(1)}, ${z.toFixed(1)})`);
+            
+            // Display results
+            document.getElementById('ml-result').textContent = xc.toFixed(3);
+            document.getElementById('dv-result').textContent = zc.toFixed(3);
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function drawGrid(ctx, centerX, centerY, scale, canvas) {
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([]);
+            
+            // Determine appropriate grid spacing based on scale
+            let gridStep = 1;
+            
+            // Adjust grid step based on scale to maintain reasonable grid density
+            if (scale < 10) {
+                gridStep = 10; // When zoomed out, show every 10 units
+            } else if (scale < 30) {
+                gridStep = 5;  // Medium zoom, show every 5 units
+            } else if (scale < 60) {
+                gridStep = 2;  // Higher zoom, show every 2 units
+            } else {
+                gridStep = 1;  // High zoom, show every unit
+            }
+            
+            // If scale is very high, use fractional steps
+            if (scale > 200) {
+                gridStep = 0.5;
+            } else if (scale > 400) {
+                gridStep = 0.2;
+            }
+            
+            // Calculate how many grid steps we can show
+            const maxStepsX = Math.ceil(centerX / (scale * gridStep));
+            const maxStepsY = Math.ceil(centerY / (scale * gridStep));
+            const totalSteps = Math.max(maxStepsX, maxStepsY);
+            
+            // Draw vertical grid lines
+            for (let i = -totalSteps; i <= totalSteps; i++) {
+                const gridValue = i * gridStep;
+                const x = centerX + gridValue * scale;
+                if (x >= 0 && x <= canvas.width) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                    
+                    // Add labels for non-zero values, but not too crowded
+                    if (gridValue !== 0 && (Math.abs(i) % Math.max(1, Math.floor(3 / gridStep)) === 0)) {
+                        ctx.fillStyle = '#666';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(gridValue.toString(), x, centerY + 15);
+                    }
+                }
+            }
+            
+            // Draw horizontal grid lines
+            for (let i = -totalSteps; i <= totalSteps; i++) {
+                const gridValue = i * gridStep;
+                const y = centerY - gridValue * scale; // Negative because canvas Y is flipped
+                if (y >= 0 && y <= canvas.height) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                    
+                    // Add labels for non-zero values, but not too crowded
+                    if (gridValue !== 0 && (Math.abs(i) % Math.max(1, Math.floor(3 / gridStep)) === 0)) {
+                        ctx.fillStyle = '#666';
+                        ctx.font = '10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(gridValue.toString(), centerX - 15, y + 3);
+                    }
+                }
+            }
+            
+            // Draw main axes
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, canvas.height);
+            ctx.stroke();
+            
+            // Add axis labels
+            ctx.fillStyle = '#333';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ML →', canvas.width - 30, centerY - 10);
+            ctx.fillText('↑', centerX + 15, 15);
+            ctx.fillText('DV', centerX + 15, 30);
+        }
+        
+        function drawPoint(ctx, x, y, color, label) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Draw white border around point for visibility
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw label with background for better readability
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '16px Arial';
+            
+            ctx.fillStyle = '#333';
+            ctx.fillText(label, x, y + 20);
+        }
+        
+        // Initialize with default calculation
+        window.onload = function() {
+            calculate();
+            
+            // Add event listeners for real-time updates
+            ['ml-input', 'dv-input', 'angle-input', 'direction-select'].forEach(id => {
+                document.getElementById(id).addEventListener('input', calculate);
+                document.getElementById(id).addEventListener('change', calculate);
+            });
+        };
+    </script>
+</body>
+</html>
