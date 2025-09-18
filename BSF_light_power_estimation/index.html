@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brain Tissue Light Scattering Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            height: fit-content;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        .control-group h3 {
+            color: #2a5298;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+
+        .unit {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 5px;
+        }
+
+        .visualization {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .viz-header {
+            background: linear-gradient(90deg, #2a5298, #1e3c72);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .viz-content {
+            padding: 20px;
+        }
+
+        .canvas-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        #heatmapCanvas {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #2a5298;
+        }
+
+        .result-card h4 {
+            color: #2a5298;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .simulate-btn {
+            background: linear-gradient(45deg, #2a5298, #1e3c72);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .simulate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.4);
+        }
+
+        .info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 30px;
+        }
+
+        .colorbar {
+            display: flex;
+            height: 20px;
+            margin: 10px 0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .colorbar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Brain Tissue Light Scattering Simulator</h1>
+            <p>Interactive implementation of the Beam Spread Function method for optogenetic applications</p>
+        </div>
+
+        <div class="main-grid">
+            <div class="controls">
+                <div class="control-group">
+                    <h3>Optical Fiber Parameters</h3>
+                    <div class="input-group">
+                        <label for="fiberDiameter">Fiber Diameter <span class="unit">μm</span></label>
+                        <input type="number" id="fiberDiameter" value="200" min="25" max="400">
+                    </div>
+                    <div class="input-group">
+                        <label for="numericalAperture">Numerical Aperture</label>
+                        <input type="number" id="numericalAperture" value="0.37" min="0.1" max="0.5" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label for="wavelength">Wavelength <span class="unit">nm</span></label>
+                        <input type="number" id="wavelength" value="473" min="400" max="700">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Tissue Optical Properties</h3>
+                    <div class="input-group">
+                        <label for="scatteringCoeff">Scattering Coefficient <span class="unit">cm⁻¹</span></label>
+                        <input type="number" id="scatteringCoeff" value="211" min="50" max="300">
+                    </div>
+                    <div class="input-group">
+                        <label for="anisotropyFactor">Anisotropy Factor (g)</label>
+                        <input type="number" id="anisotropyFactor" value="0.86" min="0.7" max="0.95" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label for="absorptionCoeff">Absorption Coefficient <span class="unit">cm⁻¹</span></label>
+                        <input type="number" id="absorptionCoeff" value="0.6" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="refractiveIndex">Refractive Index</label>
+                        <input type="number" id="refractiveIndex" value="1.36" min="1.3" max="1.4" step="0.01">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Simulation Parameters</h3>
+                    <div class="input-group">
+                        <label for="maxDepth">Max Depth <span class="unit">μm</span></label>
+                        <input type="number" id="maxDepth" value="600" min="200" max="1000">
+                    </div>
+                    <div class="input-group">
+                        <label for="resolution">Resolution <span class="unit">μm</span></label>
+                        <input type="number" id="resolution" value="5" min="1" max="10">
+                    </div>
+                </div>
+
+                <button class="simulate-btn" onclick="runSimulation()">Run Simulation</button>
+            </div>
+
+            <div class="visualization">
+                <div class="viz-header">
+                    <h2>Light Distribution Heatmap</h2>
+                    <p>Normalized light intensity in brain tissue</p>
+                </div>
+                <div class="viz-content">
+                    <div class="canvas-container">
+                        <canvas id="heatmapCanvas" width="600" height="400"></canvas>
+                    </div>
+                    <div class="colorbar" id="colorbar"></div>
+                    <div class="colorbar-label">
+                        <span>0%</span>
+                        <span>Light Intensity</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results" id="results">
+            <div class="result-card">
+                <h4>Mean Free Path</h4>
+                <div class="result-value" id="meanFreePath">-- μm</div>
+            </div>
+            <div class="result-card">
+                <h4>50% Intensity Depth</h4>
+                <div class="result-value" id="depth50">-- μm</div>
+            </div>
+            <div class="result-card">
+                <h4>10% Intensity Depth</h4>
+                <div class="result-value" id="depth10">-- μm</div>
+            </div>
+            <div class="result-card">
+                <h4>1% Intensity Depth</h4>
+                <div class="result-value" id="depth1">-- μm</div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>About This Simulator</h3>
+            <p>This interactive tool implements the Beam Spread Function (BSF) method described in Yona et al. (2016) for modeling light scattering in brain tissue for optogenetic applications. The BSF method provides a fast analytical approximation for light propagation in highly scattering media, making it ideal for real-time parameter exploration.</p>
+            
+            <h4 style="margin-top: 20px;">Key Features:</h4>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Real-time light distribution visualization</li>
+                <li>Adjustable fiber and tissue parameters</li>
+                <li>Based on validated experimental data from mouse cortex</li>
+                <li>Suitable for optogenetic experiment planning</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // BSF simulation parameters
+        let simulationData = null;
+
+        // Initialize colorbar
+        function initializeColorbar() {
+            const colorbar = document.getElementById('colorbar');
+            const colors = generateColorMap(100);
+            
+            colors.forEach(color => {
+                const segment = document.createElement('div');
+                segment.style.backgroundColor = color;
+                segment.style.flex = '1';
+                colorbar.appendChild(segment);
+            });
+        }
+
+        // Generate color map (from blue to red via green/yellow)
+        function generateColorMap(steps) {
+            console.log('generateColorMap called with steps:', steps);
+            const colors = [];
+            for (let i = 0; i < steps; i++) {
+                const ratio = i / (steps - 1);
+                let r, g, b;
+                
+                if (ratio < 0.25) {
+                    // Blue to cyan
+                    const t = ratio / 0.25;
+                    r = 0;
+                    g = Math.floor(255 * t);
+                    b = 255;
+                } else if (ratio < 0.5) {
+                    // Cyan to green
+                    const t = (ratio - 0.25) / 0.25;
+                    r = 0;
+                    g = 255;
+                    b = Math.floor(255 * (1 - t));
+                } else if (ratio < 0.75) {
+                    // Green to yellow
+                    const t = (ratio - 0.5) / 0.25;
+                    r = Math.floor(255 * t);
+                    g = 255;
+                    b = 0;
+                } else {
+                    // Yellow to red
+                    const t = (ratio - 0.75) / 0.25;
+                    r = 255;
+                    g = Math.floor(255 * (1 - t));
+                    b = 0;
+                }
+                
+                colors.push(`rgb(${r},${g},${b})`);
+            }
+            console.log('Generated', colors.length, 'colors');
+            return colors;
+        }
+
+        // BSF calculation functions
+        function gamma(x) {
+            // Stirling's approximation for gamma function
+            if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
+            return Math.sqrt(2 * Math.PI / x) * Math.pow(x / Math.E, x);
+        }
+
+        function calculateBSF(z, rho, params) {
+            const { scatteringCoeff, anisotropyFactor, absorptionCoeff, refractiveIndex } = params;
+            
+            // Convert units (z in micrometers, coefficients in cm^-1)
+            const z_cm = z / 10000; // μm to cm
+            const rho_cm = rho / 10000; // μm to cm
+            
+            const mu_s = scatteringCoeff;
+            const mu_a = absorptionCoeff;
+            const g = anisotropyFactor;
+            const n = refractiveIndex;
+            
+            // Reduced scattering coefficient
+            const mu_s_prime = mu_s * (1 - g);
+            
+            // Speed of light in medium (approximation)
+            const c = 3e10 / n; // cm/s
+            
+            // Time-independent spatial distribution (Eq. 2)
+            const spatial_factor = (3 / (4 * Math.PI * c * z_cm)) * 
+                                 Math.exp(-3 * rho_cm * rho_cm / (4 * c * z_cm));
+            
+            // Absorption attenuation
+            const absorption_factor = Math.exp(-mu_a * z_cm);
+            
+            // Scattering attenuation (simplified)
+            const scattering_factor = Math.exp(-mu_s_prime * z_cm);
+            
+            // Combined intensity
+            let intensity = spatial_factor * absorption_factor * scattering_factor;
+            
+            // Add unscattered component for small depths
+            if (z_cm < 0.01) { // Less than 100 μm
+                const unscattered = Math.exp(-(mu_s + mu_a) * z_cm);
+                intensity += unscattered;
+            }
+            
+            if (isNaN(intensity) || intensity < 0) {
+                console.log('Invalid intensity:', intensity, 'for z:', z, 'rho:', rho);
+                intensity = 0;
+            }
+
+            return Math.max(0, intensity);
+        }
+
+        function runSimulation() {
+            // Get parameters
+            const params = {
+                fiberDiameter: parseFloat(document.getElementById('fiberDiameter').value),
+                numericalAperture: parseFloat(document.getElementById('numericalAperture').value),
+                wavelength: parseFloat(document.getElementById('wavelength').value),
+                scatteringCoeff: parseFloat(document.getElementById('scatteringCoeff').value),
+                anisotropyFactor: parseFloat(document.getElementById('anisotropyFactor').value),
+                absorptionCoeff: parseFloat(document.getElementById('absorptionCoeff').value),
+                refractiveIndex: parseFloat(document.getElementById('refractiveIndex').value),
+                maxDepth: parseFloat(document.getElementById('maxDepth').value),
+                resolution: parseFloat(document.getElementById('resolution').value)
+            };
+
+            // Calculate fiber properties
+            const fiberRadius = params.fiberDiameter / 2;
+            const divergenceAngle = Math.asin(params.numericalAperture / params.refractiveIndex);
+
+            // Create simulation grid
+            const width = 600;
+            const height = 400;
+            const maxRadius = 300; // μm
+            
+            const intensityData = [];
+            let maxIntensity = 0;
+
+            // Calculate intensity distribution
+            for (let y = 0; y < height; y++) {
+                const row = [];
+                const z = (y / height) * params.maxDepth; // depth in μm
+                
+                for (let x = 0; x < width; x++) {
+                    const rho = ((x - width/2) / (width/2)) * maxRadius; // radial distance in μm
+                    
+                    let intensity = 0;
+                    
+                    if (Math.abs(rho) <= fiberRadius && z < 10) {
+                        // Direct fiber illumination
+                        intensity = 1.0;
+                    } else {
+                        // Scattered light using BSF
+                        intensity = calculateBSF(z, Math.abs(rho), params);
+                    }
+                    
+                    // Apply fiber spatial profile (within fiber area)
+                    if (Math.abs(rho) <= fiberRadius) {
+                        intensity = Math.max(intensity, Math.exp(-z / 50)); // Direct transmission
+                    }
+                    
+                    row.push(intensity);
+                    maxIntensity = Math.max(maxIntensity, intensity);
+                }
+                intensityData.push(row);
+            }
+
+            // Normalize data
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    intensityData[y][x] /= maxIntensity;
+                }
+            }
+
+            simulationData = { intensityData, params, maxIntensity };
+            
+            // Update visualization
+            drawHeatmap(intensityData, width, height);
+            updateResults(intensityData, params);
+        }
+
+        function drawHeatmap(data, width, height) {
+            console.log('drawHeatmap called with:', data.length, width, height);
+            const canvas = document.getElementById('heatmapCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const imageData = ctx.createImageData(width, height);
+            const colors = generateColorMap(256);
+            console.log('Generated colors:', colors.length, 'first few:', colors.slice(0, 3));
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const intensity = data[y][x];
+                    const colorIndex = Math.floor(intensity * 255);
+
+                    // Debug logging - only log first few to avoid spam
+                    if (y === 0 && x < 3) {
+                        console.log(`Pixel [${x},${y}]: intensity=${intensity}, colorIndex=${colorIndex}`);
+                    }
+
+                    const color = colors[Math.min(Math.max(colorIndex, 0), colors.length - 1)];
+                    
+                    // Check if color is undefined
+                    if (color === undefined && y === 0 && x < 3) {
+                        console.log('Undefined color at index:', colorIndex, 'colors length:', colors.length);
+                    }
+
+                    // Extract RGB values
+                    const rgb = color ? color.match(/\d+/g) : ['0', '0', '0'];
+                    if (!rgb || rgb.length < 3) {
+                        rgb = ['0', '0', '0']; // fallback to black
+                    }
+                    const pixelIndex = (y * width + x) * 4;
+                    
+                    imageData.data[pixelIndex] = parseInt(rgb[0]);     // R
+                    imageData.data[pixelIndex + 1] = parseInt(rgb[1]); // G
+                    imageData.data[pixelIndex + 2] = parseInt(rgb[2]); // B
+                    imageData.data[pixelIndex + 3] = 255;              // A
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Add axis labels
+            ctx.font = '12px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText('Radial Distance (μm)', width/2 - 50, height + 15);
+            
+            // Add depth markers
+            for (let i = 0; i <= 5; i++) {
+                const y = (i / 5) * height;
+                const depth = (i / 5) * parseFloat(document.getElementById('maxDepth').value);
+                ctx.fillText(`${Math.round(depth)}μm`, width + 10, y + 4);
+            }
+        }
+
+        function updateResults(data, params) {
+            // Calculate mean free path
+            const meanFreePath = 10000 / params.scatteringCoeff; // Convert cm^-1 to μm
+            document.getElementById('meanFreePath').textContent = `${Math.round(meanFreePath)} μm`;
+            
+            // Find depth where intensity drops to specific percentages
+            const depths = findIntensityDepths(data, params.maxDepth);
+            document.getElementById('depth50').textContent = `${Math.round(depths.depth50)} μm`;
+            document.getElementById('depth10').textContent = `${Math.round(depths.depth10)} μm`;
+            document.getElementById('depth1').textContent = `${Math.round(depths.depth1)} μm`;
+        }
+
+        function findIntensityDepths(data, maxDepth) {
+            const centerX = Math.floor(data[0].length / 2);
+            const height = data.length;
+            
+            let depth50 = maxDepth, depth10 = maxDepth, depth1 = maxDepth;
+            
+            for (let y = 0; y < height; y++) {
+                const depth = (y / height) * maxDepth;
+                const intensity = data[y][centerX];
+                
+                if (intensity >= 0.5 && depth50 === maxDepth) depth50 = depth;
+                if (intensity >= 0.1 && depth10 === maxDepth) depth10 = depth;
+                if (intensity >= 0.01 && depth1 === maxDepth) depth1 = depth;
+            }
+            
+            return { depth50, depth10, depth1 };
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeColorbar();
+            runSimulation(); // Run initial simulation with default parameters
+        });
+    </script>
+</body>
+</html>
