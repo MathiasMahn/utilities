@@ -95,6 +95,49 @@
             transform: translateY(0);
         }
 
+        .rotation-mode {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .rotation-mode h4 {
+            margin: 0 0 15px 0;
+            color: #1976d2;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .radio-option:hover {
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .radio-option input[type="radio"] {
+            width: auto;
+            margin-right: 10px;
+        }
+
+        .radio-option label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+            flex: 1;
+        }
+
         .visualization {
             padding: 20px;
             display: flex;
@@ -149,6 +192,15 @@
             font-size: 1.1em;
         }
 
+        .original-coords {
+            background: #f1f3f4;
+            border: 1px solid #c1c7cd;
+        }
+
+        .original-coords .coord-value {
+            color: #666;
+        }
+
         @media (max-width: 768px) {
             .content {
                 grid-template-columns: 1fr;
@@ -190,17 +242,53 @@
             color: #1976d2;
             text-align: center;
         }
+
+        .mode-indicator {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .mode-arm {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .mode-sample {
+            background: #fff3e0;
+            color: #f57c00;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Coordinate Angle Calculator</h1>
-            <p>Calculate new coordinates after tilting holder by specified angle</p>
+            <p>Calculate coordinates for stereotaxic arm rotation or sample rotation</p>
         </div>
         
         <div class="content">
             <div class="controls">
+                <div class="rotation-mode">
+                    <h4>Rotation Mode</h4>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="mode-sample" name="rotation-mode" value="sample" checked>
+                            <label for="mode-sample">Rotate Sample (target shift, no reference shift)</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="mode-arm" name="rotation-mode" value="arm">
+                            <label for="mode-arm">Rotate Stereotaxic Arm (reference shift, no target shift)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mode-indicator" id="mode-indicator">
+                    ARM ROTATION MODE
+                </div>
+                
                 <div class="form-group">
                     <label for="ml-input">ML (Mediolateral) Coordinate:</label>
                     <input type="number" id="ml-input" value="3.2" step="0.01">
@@ -208,7 +296,7 @@
                 
                 <div class="form-group">
                     <label for="dv-input">DV (Dorsoventral) Coordinate:</label>
-                    <input type="number" id="dv-input" value="-4.8" step="0.01", max = "0">
+                    <input type="number" id="dv-input" value="-4.8" step="0.01" max="0">
                 </div>
                 
                 <div class="form-group">
@@ -223,22 +311,24 @@
                         <option value="left">Left - counterclockwise</option>
                     </select>
                 </div>
-                
-                <button class="calculate-btn" onclick="calculate()">Calculate New Coordinates</button>
-                
+
                 <div class="legend">
                     <h4 style="margin: 0 0 10px 0;">Legend:</h4>
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #000;"></div>
-                        <span>Original coordinates</span>
+                        <div class="legend-color" style="background: #666;"></div>
+                        <span>Original target</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #007bff;"></div>
-                        <span>New coordinates</span>
+                        <span id="legend-new">New coordinates</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #ff9800;"></div>
-                        <span>Tilted axes</span>
+                        <div class="legend-color" id="legend-axes-color" style="background: #000000;"></div>
+                        <span id="legend-axes">Tilted axes</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff0000;"></div>
+                        <span>Origin</span>
                     </div>
                 </div>
                 
@@ -251,13 +341,17 @@
                 <canvas id="canvas" width="600" height="500"></canvas>
                 
                 <div class="results" id="results" style="display: none;">
-                    <h3>New Coordinates</h3>
+                    <h3 id="results-title">Results</h3>
+                    
+                    <div id="original-coords-section" style="display: none;">
+                    </div>
+                    
                     <div class="coord-result">
-                        <span class="coord-label">ML':</span>
+                        <span class="coord-label" id="ml-label">ML':</span>
                         <span class="coord-value" id="ml-result">-</span>
                     </div>
                     <div class="coord-result">
-                        <span class="coord-label">DV':</span>
+                        <span class="coord-label" id="dv-label">DV':</span>
                         <span class="coord-value" id="dv-result">-</span>
                     </div>
                 </div>
@@ -266,127 +360,233 @@
     </div>
 
     <script>
+        function getRotationMode() {
+            return document.querySelector('input[name="rotation-mode"]:checked').value;
+        }
+
+        function updateModeIndicator() {
+            const mode = getRotationMode();
+            const indicator = document.getElementById('mode-indicator');
+            const legendNew = document.getElementById('legend-new');
+            const legendAxes = document.getElementById('legend-axes');
+            const legendAxesColor = document.getElementById('legend-axes-color');
+            
+            if (mode === 'arm') {
+                indicator.textContent = 'ARM ROTATION MODE';
+                indicator.className = 'mode-indicator mode-arm';
+                legendNew.textContent = 'Target Coordinates';
+                legendAxes.textContent = 'Tilted stereotax axes';
+                legendAxesColor.style.background = '#000000'; // Black for arm mode
+            } else {
+                indicator.textContent = 'SAMPLE ROTATION MODE';
+                indicator.className = 'mode-indicator mode-sample';
+                legendNew.textContent = 'New target position';
+                legendAxes.textContent = 'Rotated sample axes';
+                legendAxesColor.style.background = '#ff9800'; // Orange for sample mode
+            }
+        }
+
         function calculateAutoScale(canvas, coordinates) {
-            // Find the maximum absolute coordinate value
             const maxCoordValue = Math.max(...coordinates.map(coord => Math.abs(coord)));
-            
-            // Calculate scale to use 80% of the available canvas space
             const maxCanvasSize = Math.min(canvas.width, canvas.height) * 0.4;
-            
-            // Ensure minimum scale for readability but allow dynamic scaling
             const calculatedScale = Math.max(maxCanvasSize / (maxCoordValue * 0.8), 5);
-            
-            return calculatedScale; // Remove cap to allow full dynamic scaling
+            return calculatedScale;
         }
 
         function calculate() {
-            // Get input values
             const x = parseFloat(document.getElementById('ml-input').value);
             const z = parseFloat(document.getElementById('dv-input').value);
             const angle = parseFloat(document.getElementById('angle-input').value);
             const direction = document.getElementById('direction-select').value;
+            const mode = getRotationMode();
             
-            let angleRad
-            // Convert angle to radians (fix: correct conversion)
+            let angleRad;
             if (direction === 'left') {
                 angleRad = angle * (Math.PI / 180);
-             } else {0.9
+            } else {
                 angleRad = (-angle) * (Math.PI / 180);
-             }
-            // Calculate new ML and DV values using rotation
-            const xc = x * Math.cos(angleRad) + z * Math.sin(angleRad);
-            const zc = -x * Math.sin(angleRad) + z * Math.cos(angleRad);            
+            }
+            
+            let xc, zc;
+            
+            if (mode === 'arm') {
+                // ARM ROTATION: Calculate new coordinates to reach same target
+                xc = x * Math.cos(angleRad) + z * Math.sin(angleRad);
+                zc = -x * Math.sin(angleRad) + z * Math.cos(angleRad);
+            } else {
+                // SAMPLE ROTATION: Calculate new target position
+                // When sample rotates, the target moves in the opposite direction
+                const sampleAngleRad = angleRad; // Opposite rotation
+                xc = x * Math.cos(sampleAngleRad) - z * Math.sin(sampleAngleRad);
+                zc = x * Math.sin(sampleAngleRad) + z * Math.cos(sampleAngleRad);
+            }
             
             // Get canvas and clear it
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Set up coordinate system (canvas origin at center)
+            // Set up coordinate system
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 4;
             
-            // Auto-calculate scale based on coordinate values
-            const allCoordinates = [x, z];
+            // Auto-calculate scale
+            const allCoordinates = [x, z, xc, zc];
             const scale = calculateAutoScale(canvas, allCoordinates);
             
             // Update scale info display
             document.getElementById('scale-info').textContent = `Scale: ${scale.toFixed(1)} pixels/unit`;
             
-            // Draw grid with auto-scaling
+            // Draw grid
             drawGrid(ctx, centerX, centerY, scale, canvas);
             
             // Transform coordinates for display
             const displayX = x * scale;
-            const displayZ = -z * scale; // Flip Z for display (positive Z up)
+            const displayZ = -z * scale;
+            const displayXc = xc * scale;
+            const displayZc = -zc * scale;
             
-            // Draw coordinate axes (original - black)
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([]);
+            if (mode === 'arm') {
+                drawArmRotationVisualization(ctx, centerX, centerY, scale, angleRad, 
+                    displayX, displayZ, displayXc, displayZc, x, z, xc, zc);
+            } else {
+                drawSampleRotationVisualization(ctx, centerX, centerY, scale, angleRad,
+                    displayX, displayZ, displayXc, displayZc, x, z, xc, zc);
+            }
             
-            // Draw tilted axes (orange)
-            ctx.strokeStyle = '#ff9800';
+            // Update results display
+            updateResults(mode, x, z, xc, zc);
+        }
+
+        function drawArmRotationVisualization(ctx, centerX, centerY, scale, angleRad, 
+                                           displayX, displayZ, displayXc, displayZc, x, z, xc, zc) {
+            // Draw tilted axes (stereotax arm axes) - BLACK
+            ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2;
             ctx.setLineDash([5, 5]);
             
-            // Calculate tilted axis directions
             const tiltedXAxisX = Math.cos(angleRad);
             const tiltedXAxisY = Math.sin(angleRad);
- 
+            const tiltedZAxisX = -Math.sin(angleRad);
+            const tiltedZAxisY = Math.cos(angleRad);
+            
             // Draw tilted X-axis
             ctx.beginPath();
-            ctx.moveTo(centerX - tiltedXAxisX * scale * 10, centerY + tiltedXAxisY * scale * 10);
-            ctx.lineTo(centerX + tiltedXAxisX * scale * 10, centerY - tiltedXAxisY * scale * 10);
+            ctx.moveTo(centerX - tiltedXAxisX * scale * 8, centerY + tiltedXAxisY * scale * 8);
+            ctx.lineTo(centerX + tiltedXAxisX * scale * 8, centerY - tiltedXAxisY * scale * 8);
             ctx.stroke();
             
-            // Draw original coordinates (black lines)
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([]);
-            
-            // Line from origin to original point
+            // Draw tilted Z-axis
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + displayX, centerY + displayZ);
+            ctx.moveTo(centerX - tiltedZAxisX * scale * 8, centerY + tiltedZAxisY * scale * 8);
+            ctx.lineTo(centerX + tiltedZAxisX * scale * 8, centerY - tiltedZAxisY * scale * 8);
             ctx.stroke();
             
-            // Draw new coordinates (blue lines)
-            ctx.strokeStyle = '#007bff';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([]);
-            
-            // Draw coordinate construction lines
+            // Draw original coordinate construction
             ctx.strokeStyle = '#666';
             ctx.lineWidth = 2;
             ctx.setLineDash([2, 2]);
-            
-            // Original coordinate construction (perpendicular to original axes)
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(centerX + displayX, centerY);
             ctx.lineTo(centerX + displayX, centerY + displayZ);
             ctx.stroke();
             
-            // End point of X component along tilted X-axis
-            const xCompEndX = centerX + xc * tiltedXAxisX * scale;
-            const xCompEndY = centerY - xc * tiltedXAxisY * scale;
+            // Draw new coordinate construction (along tilted axes)
+            const newXEndX = centerX + xc * tiltedXAxisX * scale;
+            const newXEndY = centerY - xc * tiltedXAxisY * scale;
+            const newZEndX = centerX + zc * tiltedZAxisX * scale;
+            const newZEndY = centerY - zc * tiltedZAxisY * scale;
             
-            // Draw X component along tilted X-axis
             ctx.strokeStyle = '#007bff';
             ctx.lineWidth = 2;
-            ctx.setLineDash([5, 3]);
+            ctx.setLineDash([3, 3]);
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
-            ctx.lineTo(xCompEndX, xCompEndY);
+            ctx.lineTo(newXEndX, newXEndY);
             ctx.lineTo(centerX + displayX, centerY + displayZ);
-            ctx.stroke();         
+            ctx.stroke();
             
             // Draw points
-            drawPoint(ctx, centerX, centerY, '#ff0000', '');
-            drawPoint(ctx, centerX + displayX, centerY + displayZ, '#000', `Target (${x.toFixed(1)}, ${z.toFixed(1)})`);
+            drawPoint(ctx, centerX, centerY, '#ff0000', 'Origin');
+            drawPoint(ctx, centerX + displayX, centerY + displayZ, '#666', 
+                `Target (${x.toFixed(1)}, ${z.toFixed(1)})`);
+        }
+
+        function drawSampleRotationVisualization(ctx, centerX, centerY, scale, angleRad,
+                                              displayX, displayZ, displayXc, displayZc, x, z, xc, zc) {
+            // Draw rotated sample axes - ORANGE
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
             
-            // Display results
+            // Sample rotates opposite to arm rotation
+            const sampleAngleRad = angleRad;
+            const rotatedXAxisX = Math.cos(sampleAngleRad);
+            const rotatedXAxisY = Math.sin(sampleAngleRad);
+            const rotatedZAxisX = -Math.sin(sampleAngleRad);
+            const rotatedZAxisY = Math.cos(sampleAngleRad);
+            
+            // Draw rotated sample X-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX - rotatedXAxisX * scale * 8, centerY + rotatedXAxisY * scale * 8);
+            ctx.lineTo(centerX + rotatedXAxisX * scale * 8, centerY - rotatedXAxisY * scale * 8);
+            ctx.stroke();
+            
+            // Draw rotated sample Z-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX - rotatedZAxisX * scale * 8, centerY + rotatedZAxisY * scale * 8);
+            ctx.lineTo(centerX + rotatedZAxisX * scale * 8, centerY - rotatedZAxisY * scale * 8);
+            ctx.stroke();
+            
+            // Draw original target position
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + displayX, centerY + displayZ);
+            ctx.stroke();
+            
+            // Draw new target position
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + displayXc, centerY + displayZc);
+            ctx.stroke();
+            
+            // Draw construction lines for new target
+            ctx.strokeStyle = '#007bff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + displayXc, centerY);
+            ctx.lineTo(centerX + displayXc, centerY + displayZc);
+            ctx.stroke();
+            
+            // Draw points
+            drawPoint(ctx, centerX, centerY, '#ff0000', 'Origin');
+            drawPoint(ctx, centerX + displayX, centerY + displayZ, '#666', 
+                `Original Target (${x.toFixed(1)}, ${z.toFixed(1)})`);
+            drawPoint(ctx, centerX + displayXc, centerY + displayZc, '#007bff', 
+                `New Target (${xc.toFixed(1)}, ${zc.toFixed(1)})`);
+        }
+
+        function updateResults(mode, x, z, xc, zc) {
+            const resultsTitle = document.getElementById('results-title');
+            const originalCoordsSection = document.getElementById('original-coords-section');
+            const mlLabel = document.getElementById('ml-label');
+            const dvLabel = document.getElementById('dv-label');
+            
+    
+            resultsTitle.textContent = 'Target Coordinates';
+            originalCoordsSection.style.display = 'none';
+            mlLabel.textContent = 'ML\':';
+            dvLabel.textContent = 'DV\':';
+            
             document.getElementById('ml-result').textContent = xc.toFixed(3);
             document.getElementById('dv-result').textContent = zc.toFixed(3);
             document.getElementById('results').style.display = 'block';
@@ -397,28 +597,24 @@
             ctx.lineWidth = 1;
             ctx.setLineDash([]);
             
-            // Determine appropriate grid spacing based on scale
             let gridStep = 1;
             
-            // Adjust grid step based on scale to maintain reasonable grid density
             if (scale < 10) {
-                gridStep = 10; // When zoomed out, show every 10 units
+                gridStep = 10;
             } else if (scale < 30) {
-                gridStep = 5;  // Medium zoom, show every 5 units
+                gridStep = 5;
             } else if (scale < 60) {
-                gridStep = 2;  // Higher zoom, show every 2 units
+                gridStep = 2;
             } else {
-                gridStep = 1;  // High zoom, show every unit
+                gridStep = 1;
             }
             
-            // If scale is very high, use fractional steps
             if (scale > 200) {
                 gridStep = 0.5;
             } else if (scale > 400) {
                 gridStep = 0.2;
             }
             
-            // Calculate how many grid steps we can show
             const maxStepsX = Math.ceil(centerX / (scale * gridStep));
             const maxStepsY = Math.ceil(centerY / (scale * gridStep));
             const totalSteps = Math.max(maxStepsX, maxStepsY);
@@ -433,7 +629,6 @@
                     ctx.lineTo(x, canvas.height);
                     ctx.stroke();
                     
-                    // Add labels for non-zero values, but not too crowded
                     if (gridValue !== 0 && (Math.abs(i) % Math.max(1, Math.floor(3 / gridStep)) === 0)) {
                         ctx.fillStyle = '#666';
                         ctx.font = '10px Arial';
@@ -446,14 +641,13 @@
             // Draw horizontal grid lines
             for (let i = -totalSteps; i <= totalSteps; i++) {
                 const gridValue = i * gridStep;
-                const y = centerY - gridValue * scale; // Negative because canvas Y is flipped
+                const y = centerY - gridValue * scale;
                 if (y >= 0 && y <= canvas.height) {
                     ctx.beginPath();
                     ctx.moveTo(0, y);
                     ctx.lineTo(canvas.width, y);
                     ctx.stroke();
                     
-                    // Add labels for non-zero values, but not too crowded
                     if (gridValue !== 0 && (Math.abs(i) % Math.max(1, Math.floor(3 / gridStep)) === 0)) {
                         ctx.fillStyle = '#666';
                         ctx.font = '10px Arial';
@@ -494,27 +688,36 @@
             ctx.arc(x, y, 5, 0, 2 * Math.PI);
             ctx.fill();
             
-            // Draw white border around point for visibility
             ctx.strokeStyle = 'white';
             ctx.lineWidth = 2;
             ctx.stroke();
             
-            // Draw label with background for better readability
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = '16px Arial';
-            
-            ctx.fillStyle = '#333';
-            ctx.fillText(label, x, y + 20);
+            if (label) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.font = '16px Arial';
+                
+                ctx.fillStyle = '#333';
+                ctx.fillText(label, x, y + 20);
+            }
         }
         
-        // Initialize with default calculation
+        // Initialize
         window.onload = function() {
+            updateModeIndicator();
             calculate();
             
-            // Add event listeners for real-time updates
+            // Add event listeners
             ['ml-input', 'dv-input', 'angle-input', 'direction-select'].forEach(id => {
                 document.getElementById(id).addEventListener('input', calculate);
                 document.getElementById(id).addEventListener('change', calculate);
+            });
+            
+            // Add mode change listener
+            document.querySelectorAll('input[name="rotation-mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    updateModeIndicator();
+                    calculate();
+                });
             });
         };
     </script>
