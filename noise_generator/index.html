@@ -157,6 +157,34 @@
             transform: translateY(-2px);
         }
 
+        /* Color-coded preset buttons */
+        .preset-btn[data-preset="white"] { background: #e0e0e0; color: #333; }
+        .preset-btn[data-preset="white"]:hover { background: #f5f5f5; }
+        
+        .preset-btn[data-preset="pink"] { background: #e91e63; }
+        .preset-btn[data-preset="pink"]:hover { background: #c2185b; }
+        
+        .preset-btn[data-preset="brown"] { background: #795548; }
+        .preset-btn[data-preset="brown"]:hover { background: #5d4037; }
+        
+        .preset-btn[data-preset="blue"] { background: #2196f3; }
+        .preset-btn[data-preset="blue"]:hover { background: #1976d2; }
+        
+        .preset-btn[data-preset="violet"] { background: #9c27b0; }
+        .preset-btn[data-preset="violet"]:hover { background: #7b1fa2; }
+        
+        .preset-btn[data-preset="grey"] { background: #9e9e9e; }
+        .preset-btn[data-preset="grey"]:hover { background: #757575; }
+        
+        .preset-btn[data-preset="green"] { background: #4caf50; }
+        .preset-btn[data-preset="green"]:hover { background: #388e3c; }
+        
+        .preset-btn[data-preset="infra"] { background: #b71c1c; }
+        .preset-btn[data-preset="infra"]:hover { background: #8b0000; }
+        
+        .preset-btn[data-preset="ultra"] { background: #7c4dff; }
+        .preset-btn[data-preset="ultra"]:hover { background: #651fff; }
+
         .sliders {
             margin-bottom: 30px;
         }
@@ -273,10 +301,13 @@
         <div class="presets">
             <h2>Presets</h2>
             <div class="preset-buttons">
-                <button class="preset-btn" data-preset="brown">Brown</button>
-                <button class="preset-btn" data-preset="pink">Pink</button>
                 <button class="preset-btn" data-preset="white">White</button>
+                <button class="preset-btn" data-preset="pink">Pink</button>
+                <button class="preset-btn" data-preset="brown">Brown</button>
+                <button class="preset-btn" data-preset="blue">Blue</button>
+                <button class="preset-btn" data-preset="violet">Violet</button>
                 <button class="preset-btn" data-preset="grey">Grey</button>
+                <button class="preset-btn" data-preset="green">Green</button>
                 <button class="preset-btn" data-preset="infra">Infra</button>
                 <button class="preset-btn" data-preset="ultra">Ultra</button>
             </div>
@@ -320,12 +351,15 @@
         ];
 
         const presets = {
-            brown: [0.61, 0.56, 0.52, 0.47, 0.42, 0.37, 0.33, 0.29, 0.26, 0.22],
-            pink: [0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67, 0.67],
-            white: [0.22, 0.26, 0.30, 0.34, 0.37, 0.42, 0.47, 0.52, 0.57, 0.61],
-            grey: [0.66, 0.40, 0.33, 0.27, 0.27, 0.27, 0.24, 0.21, 0.27, 0.40],
-            infra: [0.66, 0.44, 0.28, 0.17, 0.08, 0.03, 0, 0, 0, 0],
-            ultra: [0, 0, 0, 0, 0.04, 0.09, 0.18, 0.28, 0.44, 0.66]
+            white: [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],           // Flat spectrum - equal power all bands
+            pink: [0.9, 0.78, 0.67, 0.58, 0.5, 0.43, 0.37, 0.32, 0.28, 0.24],    // -3.01 dB/octave (1/f)
+            brown: [0.9, 0.64, 0.45, 0.32, 0.22, 0.16, 0.11, 0.08, 0.06, 0.04],  // -6.02 dB/octave (1/f²)
+            blue: [0.24, 0.28, 0.32, 0.37, 0.43, 0.5, 0.58, 0.67, 0.78, 0.9],    // +3.01 dB/octave (f)
+            violet: [0.04, 0.06, 0.08, 0.11, 0.16, 0.22, 0.32, 0.45, 0.64, 0.9], // +6.02 dB/octave (f²)
+            grey: [0.7, 0.45, 0.35, 0.3, 0.28, 0.28, 0.3, 0.35, 0.45, 0.7],      // Psychoacoustic equal loudness curve
+            green: [0.15, 0.25, 0.45, 0.7, 0.85, 0.7, 0.45, 0.25, 0.15, 0.08],   // Mid-frequency emphasis (nature sounds)
+            infra: [0.66, 0.44, 0.28, 0.17, 0.08, 0.03, 0, 0, 0, 0],             // Sub-bass frequencies only
+            ultra: [0, 0, 0, 0, 0.04, 0.09, 0.18, 0.28, 0.44, 0.66]              // High frequencies only
         };
 
         function init() {
