@@ -491,9 +491,18 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
             }
 
             createBufferFromArrays(bufferArrays) {
+                if (!bufferArrays || bufferArrays.length === 0) {
+                    throw new Error('Buffer arrays is empty or undefined');
+                }
+
                 const bufferParts = [];
 
                 for (const [arrayData, dtype] of bufferArrays) {
+                    if (!arrayData || arrayData.length === 0) {
+                        console.warn(`Warning: Empty array data for dtype ${dtype}`);
+                        continue;
+                    }
+
                     const normalizedDtype = this.normalizeDtype(dtype);
                     let typedArray;
                     switch (normalizedDtype) {
@@ -508,7 +517,15 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                     bufferParts.push(new Uint8Array(typedArray.buffer));
                 }
 
+                if (bufferParts.length === 0) {
+                    throw new Error('No valid buffer data found - all arrays were empty');
+                }
+
                 const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
+                if (totalLength === 0) {
+                    throw new Error('Total buffer length is 0 - check your input data');
+                }
+
                 const result = new Uint8Array(totalLength);
                 let offset = 0;
                 for (const part of bufferParts) {
@@ -1019,12 +1036,16 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                     const cleanInput = inputText
                         .replace(/\(/g, '[')
                         .replace(/\)/g, ']')
-                        .replace(/'(\w+)'/g, '"$1"');
+                        .replace(/'([^']+)'/g, '"$1"');  // Changed \w+ to [^']+ to support dtypes with special chars like '<i4'
 
                     const parsed = eval(cleanInput);
 
                     // Skip the first two header tuples and return the rest
-                    return parsed.slice(2);
+                    const result = parsed.slice(2);
+                    if (!result || result.length === 0) {
+                        throw new Error('No data tuples found after header - expected data after first two header tuples');
+                    }
+                    return result;
                 } catch (e) {
                     throw new Error(`Failed to parse tuple format: ${e.message}`);
                 }
@@ -1037,9 +1058,16 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 const bytesStr = inputText.slice(2, -1);
                 const bytes = parsePythonBytes(bytesStr);
 
+                if (bytes.length < 5) {
+                    throw new Error(`Binary data too short: ${bytes.length} bytes (need at least 5 bytes for header)`);
+                }
+
                 // For raw bytes, return ALL bytes as a single uint8 array
                 // The parser will handle the structure internally
                 const dataBytes = bytes.slice(5);
+                if (dataBytes.length === 0) {
+                    throw new Error('No data bytes after header - binary message contains only header');
+                }
                 return [([dataBytes], 'uint8')];
             }
 
