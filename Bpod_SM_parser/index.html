@@ -326,16 +326,20 @@
                     <h3>Supported Formats:</h3>
                     <ul>
                         <li><strong>Tuple Format:</strong> List of (array, dtype) tuples</li>
+                        <li><strong>Binary Format:</strong> Raw binary bytes with b'...' or b"..." notation</li>
                     </ul>
                 </div>
 
-                <textarea 
-                    class="input-textarea" 
-                    id="inputData" 
+                <textarea
+                    class="input-textarea"
+                    id="inputData"
                     placeholder="Paste your data here...
 
 Example tuple format:
 (([67, 0, 0], 'uint8'), ([128], 'uint16'), ([5, 1, 1, 0], 'uint8'), ...)
+
+Example binary format:
+b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
 "
                 ></textarea>
 
@@ -851,8 +855,9 @@ Example tuple format:
                 }
             }
             
-            // Check if it's raw bytes format
-            if (inputText.startsWith('b"') && inputText.endsWith('"')) {
+            // Check if it's raw bytes format (with either single or double quotes)
+            if ((inputText.startsWith('b"') && inputText.endsWith('"')) ||
+                (inputText.startsWith("b'") && inputText.endsWith("'"))) {
                 // Parse raw bytes
                 const bytesStr = inputText.slice(2, -1);
                 const bytes = [];
@@ -869,7 +874,7 @@ Example tuple format:
                         i++;
                     }
                 }
-                
+
                 // For raw bytes, return ALL bytes as a single uint8 array
                 // The parser will handle the structure internally
                 const dataBytes = bytes.slice(5);
@@ -881,13 +886,57 @@ Example tuple format:
 
         function validateHeader(inputText) {
             inputText = inputText.trim();
-            
+
+            // Handle binary format
+            if ((inputText.startsWith('b"') && inputText.endsWith('"')) ||
+                (inputText.startsWith("b'") && inputText.endsWith("'"))) {
+                try {
+                    // Parse the binary data
+                    const bytesStr = inputText.slice(2, -1);
+                    const bytes = [];
+                    let i = 0;
+                    while (i < bytesStr.length) {
+                        if (bytesStr[i] === '\\' && bytesStr[i + 1] === 'x') {
+                            const hex = bytesStr.substring(i + 2, i + 4);
+                            bytes.push(parseInt(hex, 16));
+                            i += 4;
+                        } else {
+                            bytes.push(bytesStr.charCodeAt(i));
+                            i++;
+                        }
+                    }
+
+                    // Extract header info from binary format
+                    if (bytes.length < 5) {
+                        return { valid: false, error: 'Binary data too short (need at least 5 header bytes)' };
+                    }
+
+                    const opcode = bytes[0];
+                    const runStateMatrixASAP = bytes[1];
+                    const using255BackSignal = bytes[2];
+                    const expectedBytes = bytes[3] | (bytes[4] << 8); // uint16 little-endian
+                    const actualBytes = bytes.length - 5; // Remaining bytes after header
+
+                    return {
+                        valid: true,
+                        expectedBytes,
+                        actualBytes,
+                        opcode,
+                        runStateMatrixASAP,
+                        using255BackSignal,
+                        mismatch: expectedBytes !== actualBytes
+                    };
+                } catch (e) {
+                    return { valid: false, error: `Parse error in binary format: ${e.message}` };
+                }
+            }
+
             // Handle tuple format
             const cleanInput = inputText
                 .replace(/\(/g, '[')
                 .replace(/\)/g, ']')
                 .replace(/'(\w+)'/g, '"$1"');
-            
+
             try {
                 const parsed = eval(cleanInput);
                 
