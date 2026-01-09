@@ -384,14 +384,65 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 this.nGlobalCountersUsed = 0;
                 this.nConditionsUsed = 0;
                 this.bufferPos = 0;
-                
+
                 this.MAX_GLOBAL_TIMERS = 16;
                 this.MAX_GLOBAL_COUNTERS = 8;
                 this.MAX_CONDITIONS = 16;
                 this.InputMatrixSize = 97;
                 this.OutputMatrixSize = 21;
-                
+
                 this.resetMatrices();
+            }
+
+            // Normalize numpy-style dtype to JavaScript TypedArray type
+            normalizeDtype(dtype) {
+                // Handle numpy-style dtypes
+                const dtypeMap = {
+                    // Unsigned integers
+                    'uint8': 'uint8',
+                    'u1': 'uint8',
+                    '<u1': 'uint8',
+                    '>u1': 'uint8',
+                    'B': 'uint8',
+
+                    'uint16': 'uint16',
+                    'u2': 'uint16',
+                    '<u2': 'uint16',
+                    '>u2': 'uint16',
+                    'H': 'uint16',
+
+                    'uint32': 'uint32',
+                    'u4': 'uint32',
+                    '<u4': 'uint32',
+                    '>u4': 'uint32',
+                    'I': 'uint32',
+
+                    // Signed integers (mapped to unsigned since we're reading bytes)
+                    'int8': 'int8',
+                    'i1': 'int8',
+                    '<i1': 'int8',
+                    '>i1': 'int8',
+                    'b': 'int8',
+
+                    'int16': 'int16',
+                    'i2': 'int16',
+                    '<i2': 'int16',
+                    '>i2': 'int16',
+                    'h': 'int16',
+
+                    'int32': 'int32',
+                    'i4': 'int32',
+                    '<i4': 'int32',
+                    '>i4': 'int32',
+                    'i': 'int32',  // Common numpy shorthand for int32
+                    'l': 'int32',
+                };
+
+                const normalized = dtypeMap[dtype.toLowerCase()];
+                if (!normalized) {
+                    throw new Error(`Unsupported dtype: ${dtype}. Supported types: ${Object.keys(dtypeMap).join(', ')}`);
+                }
+                return normalized;
             }
             
             resetMatrices() {
@@ -441,18 +492,22 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
 
             createBufferFromArrays(bufferArrays) {
                 const bufferParts = [];
-                
+
                 for (const [arrayData, dtype] of bufferArrays) {
+                    const normalizedDtype = this.normalizeDtype(dtype);
                     let typedArray;
-                    switch (dtype) {
+                    switch (normalizedDtype) {
                         case 'uint8': typedArray = new Uint8Array(arrayData); break;
                         case 'uint16': typedArray = new Uint16Array(arrayData); break;
                         case 'uint32': typedArray = new Uint32Array(arrayData); break;
-                        default: throw new Error(`Unsupported dtype: ${dtype}`);
+                        case 'int8': typedArray = new Int8Array(arrayData); break;
+                        case 'int16': typedArray = new Int16Array(arrayData); break;
+                        case 'int32': typedArray = new Int32Array(arrayData); break;
+                        default: throw new Error(`Unsupported normalized dtype: ${normalizedDtype}`);
                     }
                     bufferParts.push(new Uint8Array(typedArray.buffer));
                 }
-                
+
                 const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
                 const result = new Uint8Array(totalLength);
                 let offset = 0;
@@ -460,7 +515,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                     result.set(part, offset);
                     offset += part.length;
                 }
-                
+
                 return result;
             }
 
@@ -795,27 +850,87 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
             }
         }
 
+        function normalizeDtype(dtype) {
+            // Handle numpy-style dtypes
+            const dtypeMap = {
+                // Unsigned integers
+                'uint8': 'uint8',
+                'u1': 'uint8',
+                '<u1': 'uint8',
+                '>u1': 'uint8',
+                'B': 'uint8',
+
+                'uint16': 'uint16',
+                'u2': 'uint16',
+                '<u2': 'uint16',
+                '>u2': 'uint16',
+                'H': 'uint16',
+
+                'uint32': 'uint32',
+                'u4': 'uint32',
+                '<u4': 'uint32',
+                '>u4': 'uint32',
+                'I': 'uint32',
+
+                // Signed integers
+                'int8': 'int8',
+                'i1': 'int8',
+                '<i1': 'int8',
+                '>i1': 'int8',
+                'b': 'int8',
+
+                'int16': 'int16',
+                'i2': 'int16',
+                '<i2': 'int16',
+                '>i2': 'int16',
+                'h': 'int16',
+
+                'int32': 'int32',
+                'i4': 'int32',
+                '<i4': 'int32',
+                '>i4': 'int32',
+                'i': 'int32',  // Common numpy shorthand for int32
+                'l': 'int32',
+            };
+
+            const normalized = dtypeMap[dtype.toLowerCase()];
+            if (!normalized) {
+                throw new Error(`Unsupported dtype: ${dtype}. Supported types: ${Object.keys(dtypeMap).join(', ')}`);
+            }
+            return normalized;
+        }
+
         function tuplesToRawBytes(tuples) {
             const bufferParts = [];
-            
+
             for (const [arrayData, dtype] of tuples) {
+                const normalizedDtype = normalizeDtype(dtype);
                 let typedArray;
-                switch (dtype) {
-                    case 'uint8': 
-                        typedArray = new Uint8Array(arrayData); 
+                switch (normalizedDtype) {
+                    case 'uint8':
+                        typedArray = new Uint8Array(arrayData);
                         break;
-                    case 'uint16': 
-                        typedArray = new Uint16Array(arrayData); 
+                    case 'uint16':
+                        typedArray = new Uint16Array(arrayData);
                         break;
-                    case 'uint32': 
-                        typedArray = new Uint32Array(arrayData); 
+                    case 'uint32':
+                        typedArray = new Uint32Array(arrayData);
                         break;
-                    default: 
-                        throw new Error(`Unsupported dtype: ${dtype}`);
+                    case 'int8':
+                        typedArray = new Int8Array(arrayData);
+                        break;
+                    case 'int16':
+                        typedArray = new Int16Array(arrayData);
+                        break;
+                    case 'int32':
+                        typedArray = new Int32Array(arrayData);
+                        break;
+                    default:
+                        throw new Error(`Unsupported normalized dtype: ${normalizedDtype}`);
                 }
                 bufferParts.push(new Uint8Array(typedArray.buffer));
             }
-            
+
             // Combine all parts into one byte array
             const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
             const result = new Uint8Array(totalLength);
@@ -824,7 +939,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 result.set(part, offset);
                 offset += part.length;
             }
-            
+
             return result;
         }
 
@@ -1003,12 +1118,29 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 }
                 
                 const expectedBytes = lengthArray[0];
-                
+
                 // Calculate actual bytes from remaining tuples
                 let actualBytes = 0;
                 for (let i = 2; i < parsed.length; i++) {
                     const [dataArray, dataType] = parsed[i];
-                    const bytesPerElement = dataType === 'uint8' ? 1 : dataType === 'uint16' ? 2 : 4;
+                    const normalizedDtype = normalizeDtype(dataType);
+                    let bytesPerElement;
+                    switch (normalizedDtype) {
+                        case 'uint8':
+                        case 'int8':
+                            bytesPerElement = 1;
+                            break;
+                        case 'uint16':
+                        case 'int16':
+                            bytesPerElement = 2;
+                            break;
+                        case 'uint32':
+                        case 'int32':
+                            bytesPerElement = 4;
+                            break;
+                        default:
+                            bytesPerElement = 1; // fallback
+                    }
                     actualBytes += dataArray.length * bytesPerElement;
                 }
                 
