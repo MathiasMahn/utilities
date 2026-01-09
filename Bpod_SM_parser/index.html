@@ -1068,7 +1068,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 if (dataBytes.length === 0) {
                     throw new Error('No data bytes after header - binary message contains only header');
                 }
-                return [[dataBytes], 'uint8'];
+                return [[dataBytes, 'uint8']];
             }
 
             throw new Error('Input format not recognized. Expected tuple format or raw bytes format.');
