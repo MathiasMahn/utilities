@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bpod Binary Format Test</title>
+</head>
+<body>
+    <h1>Testing Binary Format Support</h1>
+    <div id="results"></div>
+
+    <script>
+        // Include the parser class from the main file
+        class BpodStateMatrixParser {
+            constructor() {
+                this.nStates = 0;
+                this.nGlobalTimersUsed = 0;
+                this.nGlobalCountersUsed = 0;
+                this.nConditionsUsed = 0;
+                this.bufferPos = 0;
+
+                this.MAX_GLOBAL_TIMERS = 16;
+                this.MAX_GLOBAL_COUNTERS = 8;
+                this.MAX_CONDITIONS = 16;
+                this.InputMatrixSize = 97;
+                this.OutputMatrixSize = 21;
+
+                this.resetMatrices();
+            }
+
+            resetMatrices() {
+                if (this.nStates > 0) {
+                    this.smGlobalTimerTrig = new Uint32Array(this.nStates);
+                    this.smGlobalTimerCancel = new Uint32Array(this.nStates);
+                    this.smGlobalCounterReset = new Uint8Array(this.nStates);
+                    this.StateTimerMatrix = new Uint8Array(this.nStates);
+                    this.OutputStateMatrix = Array(this.nStates).fill().map(() => new Uint16Array(this.OutputMatrixSize));
+                    this.StateTimers = new Uint32Array(this.nStates);
+
+                    this.InputStateMatrix = Array(this.nStates).fill().map((_, x) =>
+                        new Uint8Array(this.InputMatrixSize).fill(x)
+                    );
+
+                    this.GlobalTimerStartMatrix = Array(this.nStates).fill().map((_, x) =>
+                        new Uint8Array(this.MAX_GLOBAL_TIMERS).fill(x)
+                    );
+                    this.GlobalTimerEndMatrix = Array(this.nStates).fill().map((_, x) =>
+                        new Uint8Array(this.MAX_GLOBAL_TIMERS).fill(x)
+                    );
+                    this.GlobalCounterMatrix = Array(this.nStates).fill().map((_, x) =>
+                        new Uint8Array(this.MAX_GLOBAL_COUNTERS).fill(x)
+                    );
+                    this.ConditionMatrix = Array(this.nStates).fill().map((_, x) =>
+                        new Uint8Array(this.MAX_CONDITIONS).fill(x)
+                    );
+                }
+
+                this.GlobalTimerChannel = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnMessage = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOffMessage = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerLoop = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GTUsingLoopCounter = new Array(this.MAX_GLOBAL_TIMERS).fill(false);
+                this.SendGlobalTimerEvents = new Uint8Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimers = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnsetDelays = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerLoopIntervals = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+                this.GlobalTimerOnsetTriggers = new Uint32Array(this.MAX_GLOBAL_TIMERS);
+
+                this.GlobalCounterAttachedEvents = new Uint8Array(this.MAX_GLOBAL_COUNTERS);
+                this.GlobalCounterThresholds = new Uint32Array(this.MAX_GLOBAL_COUNTERS);
+
+                this.ConditionChannels = new Uint8Array(this.MAX_CONDITIONS);
+                this.ConditionValues = new Uint32Array(this.MAX_CONDITIONS);
+            }
+
+            readFromBuffer(buffer, dtype, count = 1) {
+                const bytesPerElement = dtype === 'uint8' ? 1 : dtype === 'uint16' ? 2 : 4;
+                const totalBytes = bytesPerElement * count;
+
+                if (this.bufferPos + totalBytes > buffer.length) {
+                    throw new Error(`Buffer overflow: trying to read ${totalBytes} bytes at position ${this.bufferPos}, buffer size ${buffer.length}`);
+                }
+
+                const dataView = new DataView(buffer.buffer, buffer.byteOffset + this.bufferPos, totalBytes);
+                this.bufferPos += totalBytes;
+
+                if (count === 1) {
+                    switch (dtype) {
+                        case 'uint8': return dataView.getUint8(0);
+                        case 'uint16': return dataView.getUint16(0, true);
+                        case 'uint32': return dataView.getUint32(0, true);
+                    }
+                } else {
+                    const result = [];
+                    for (let i = 0; i < count; i++) {
+                        const offset = i * bytesPerElement;
+                        switch (dtype) {
+                            case 'uint8': result.push(dataView.getUint8(offset)); break;
+                            case 'uint16': result.push(dataView.getUint16(offset, true)); break;
+                            case 'uint32': result.push(dataView.getUint32(offset, true)); break;
+                        }
+                    }
+                    return result;
+                }
+            }
+
+            createBufferFromArrays(bufferArrays) {
+                const bufferParts = [];
+
+                for (const [arrayData, dtype] of bufferArrays) {
+                    let typedArray;
+                    switch (dtype) {
+                        case 'uint8': typedArray = new Uint8Array(arrayData); break;
+                        case 'uint16': typedArray = new Uint16Array(arrayData); break;
+                        case 'uint32': typedArray = new Uint32Array(arrayData); break;
+                        default: throw new Error(`Unsupported dtype: ${dtype}`);
+                    }
+                    bufferParts.push(new Uint8Array(typedArray.buffer));
+                }
+
+                const totalLength = bufferParts.reduce((sum, part) => sum + part.length, 0);
+                const result = new Uint8Array(totalLength);
+                let offset = 0;
+                for (const part of bufferParts) {
+                    result.set(part, offset);
+                    offset += part.length;
+                }
+
+                return result;
+            }
+
+            loadStateMatrix(bufferArrays, machineType = 4) {
+                const buffer = this.createBufferFromArrays(bufferArrays);
+                this.bufferPos = 0;
+
+                let output = `Buffer size: ${buffer.length} bytes\n\n`;
+                output += "--- Reading Header Information ---\n";
+                this.nStates = this.readFromBuffer(buffer, 'uint8');
+                output += `nStates = ${this.nStates}\n`;
+
+                this.nGlobalTimersUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nGlobalTimersUsed = ${this.nGlobalTimersUsed}\n`;
+
+                this.nGlobalCountersUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nGlobalCountersUsed = ${this.nGlobalCountersUsed}\n`;
+
+                this.nConditionsUsed = this.readFromBuffer(buffer, 'uint8');
+                output += `nConditionsUsed = ${this.nConditionsUsed}\n\n`;
+
+                return {
+                    success: true,
+                    output,
+                    stats: {
+                        nStates: this.nStates,
+                        nGlobalTimersUsed: this.nGlobalTimersUsed,
+                        nGlobalCountersUsed: this.nGlobalCountersUsed,
+                        nConditionsUsed: this.nConditionsUsed,
+                        totalBytes: buffer.length
+                    }
+                };
+            }
+        }
+
+        function parseInput(inputText) {
+            inputText = inputText.trim();
+
+            // Check if it's raw bytes format (with either single or double quotes)
+            if ((inputText.startsWith('b"') && inputText.endsWith('"')) ||
+                (inputText.startsWith("b'") && inputText.endsWith("'"))) {
+                // Parse raw bytes
+                const bytesStr = inputText.slice(2, -1);
+                const bytes = [];
+                let i = 0;
+                while (i < bytesStr.length) {
+                    if (bytesStr[i] === '\\' && bytesStr[i + 1] === 'x') {
+                        // Hex escape sequence
+                        const hex = bytesStr.substring(i + 2, i + 4);
+                        bytes.push(parseInt(hex, 16));
+                        i += 4;
+                    } else {
+                        // Regular character
+                        bytes.push(bytesStr.charCodeAt(i));
+                        i++;
+                    }
+                }
+
+                // For raw bytes, return ALL bytes as a single uint8 array
+                // The parser will handle the structure internally
+                const dataBytes = bytes.slice(5);
+                return [([dataBytes], 'uint8')];
+            }
+
+            throw new Error('Input format not recognized. Expected raw bytes format.');
+        }
+
+        // Test with the provided example
+        const testInput = `b'C\\x00\\x00n\\x00\\x03\\x02\\x00\\x00\\x01\\x02\\x03\\x00\\x00\\x00\\x00\\x00\\x01\\x00\\x0b\\x00\\xff\\x00\\x01\\x00\\r\\x00\\xff\\x00\\x00\\x00\\x00\\x00\\x01\\x00\\x03\\x01\\x00\\x03\\x00\\x00\\x00\\x00\\x00\\x00\\xfe\\xfe\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x01\\x01\\x00\\x00\\x00\\x01\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\xc4\\t\\x00\\x00\\xc4\\t\\x00\\x00\\xc4\\t\\x00\\x00\\x00\\x00\\x00\\x00P\\xc3\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'`;
+
+        console.log("Test input:", testInput);
+
+        try {
+            console.log("Parsing input...");
+            const bufferArrays = parseInput(testInput);
+            console.log("Buffer arrays created:", bufferArrays);
+
+            console.log("Creating parser...");
+            const parser = new BpodStateMatrixParser();
+
+            console.log("Loading state matrix...");
+            const result = parser.loadStateMatrix(bufferArrays);
+
+            document.getElementById('results').innerHTML = `
+                <h2 style="color: green;">✓ Test PASSED</h2>
+                <h3>Parsed Data:</h3>
+                <pre>${result.output}</pre>
+                <h3>Statistics:</h3>
+                <pre>${JSON.stringify(result.stats, null, 2)}</pre>
+            `;
+
+            console.log("Test PASSED:", result);
+        } catch (error) {
+            document.getElementById('results').innerHTML = `
+                <h2 style="color: red;">✗ Test FAILED</h2>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <pre>${error.stack}</pre>
+            `;
+            console.error("Test FAILED:", error);
+        }
+    </script>
+</body>
+</html>
