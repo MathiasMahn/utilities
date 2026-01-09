@@ -834,9 +834,69 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
             return [([Array.from(dataBytes)], 'uint8')];
         }
 
+        function parsePythonBytes(bytesStr) {
+            // Parse Python byte string escape sequences
+            const bytes = [];
+            let i = 0;
+            while (i < bytesStr.length) {
+                if (bytesStr[i] === '\\' && i + 1 < bytesStr.length) {
+                    const nextChar = bytesStr[i + 1];
+                    if (nextChar === 'x') {
+                        // Hex escape sequence \xNN
+                        const hex = bytesStr.substring(i + 2, i + 4);
+                        bytes.push(parseInt(hex, 16));
+                        i += 4;
+                    } else if (nextChar === 'n') {
+                        bytes.push(10); // newline
+                        i += 2;
+                    } else if (nextChar === 'r') {
+                        bytes.push(13); // carriage return
+                        i += 2;
+                    } else if (nextChar === 't') {
+                        bytes.push(9); // tab
+                        i += 2;
+                    } else if (nextChar === 'b') {
+                        bytes.push(8); // backspace
+                        i += 2;
+                    } else if (nextChar === 'f') {
+                        bytes.push(12); // form feed
+                        i += 2;
+                    } else if (nextChar === 'v') {
+                        bytes.push(11); // vertical tab
+                        i += 2;
+                    } else if (nextChar === '\\') {
+                        bytes.push(92); // backslash
+                        i += 2;
+                    } else if (nextChar === '\'' || nextChar === '"') {
+                        bytes.push(nextChar.charCodeAt(0)); // quote
+                        i += 2;
+                    } else if (nextChar >= '0' && nextChar <= '7') {
+                        // Octal escape sequence \NNN (up to 3 digits)
+                        let octalStr = '';
+                        let j = i + 1;
+                        while (j < bytesStr.length && j < i + 4 && bytesStr[j] >= '0' && bytesStr[j] <= '7') {
+                            octalStr += bytesStr[j];
+                            j++;
+                        }
+                        bytes.push(parseInt(octalStr, 8));
+                        i = j;
+                    } else {
+                        // Unknown escape, treat as literal
+                        bytes.push(bytesStr.charCodeAt(i));
+                        i++;
+                    }
+                } else {
+                    // Regular character
+                    bytes.push(bytesStr.charCodeAt(i));
+                    i++;
+                }
+            }
+            return bytes;
+        }
+
         function parseInput(inputText) {
             inputText = inputText.trim();
-            
+
             // Parse tuple format
             if (inputText.startsWith('((') && inputText.endsWith('))')) {
                 try {
@@ -845,42 +905,29 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                         .replace(/\(/g, '[')
                         .replace(/\)/g, ']')
                         .replace(/'(\w+)'/g, '"$1"');
-                    
+
                     const parsed = eval(cleanInput);
-                    
+
                     // Skip the first two header tuples and return the rest
                     return parsed.slice(2);
                 } catch (e) {
                     throw new Error(`Failed to parse tuple format: ${e.message}`);
                 }
             }
-            
+
             // Check if it's raw bytes format (with either single or double quotes)
             if ((inputText.startsWith('b"') && inputText.endsWith('"')) ||
                 (inputText.startsWith("b'") && inputText.endsWith("'"))) {
                 // Parse raw bytes
                 const bytesStr = inputText.slice(2, -1);
-                const bytes = [];
-                let i = 0;
-                while (i < bytesStr.length) {
-                    if (bytesStr[i] === '\\' && bytesStr[i + 1] === 'x') {
-                        // Hex escape sequence
-                        const hex = bytesStr.substring(i + 2, i + 4);
-                        bytes.push(parseInt(hex, 16));
-                        i += 4;
-                    } else {
-                        // Regular character
-                        bytes.push(bytesStr.charCodeAt(i));
-                        i++;
-                    }
-                }
+                const bytes = parsePythonBytes(bytesStr);
 
                 // For raw bytes, return ALL bytes as a single uint8 array
                 // The parser will handle the structure internally
                 const dataBytes = bytes.slice(5);
                 return [([dataBytes], 'uint8')];
             }
-            
+
             throw new Error('Input format not recognized. Expected tuple format or raw bytes format.');
         }
 
@@ -893,18 +940,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 try {
                     // Parse the binary data
                     const bytesStr = inputText.slice(2, -1);
-                    const bytes = [];
-                    let i = 0;
-                    while (i < bytesStr.length) {
-                        if (bytesStr[i] === '\\' && bytesStr[i + 1] === 'x') {
-                            const hex = bytesStr.substring(i + 2, i + 4);
-                            bytes.push(parseInt(hex, 16));
-                            i += 4;
-                        } else {
-                            bytes.push(bytesStr.charCodeAt(i));
-                            i++;
-                        }
-                    }
+                    const bytes = parsePythonBytes(bytesStr);
 
                     // Extract header info from binary format
                     if (bytes.length < 5) {
