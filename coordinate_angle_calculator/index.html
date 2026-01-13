@@ -260,6 +260,90 @@
             background: #fff3e0;
             color: #f57c00;
         }
+
+        .angle-input-row {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .angle-input-row input {
+            flex: 1;
+        }
+
+        .calculate-from-btn {
+            padding: 10px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .calculate-from-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .calculate-from-btn:active {
+            transform: translateY(0);
+        }
+
+        .angle-calculation-section {
+            margin-top: 10px;
+            padding: 15px;
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .angle-calculation-section.visible {
+            display: block;
+        }
+
+        .angle-calculation-section h4 {
+            margin: 0 0 15px 0;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .calc-input-group {
+            margin-bottom: 10px;
+        }
+
+        .calc-input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .calc-input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .calc-input-group input {
+            width: 100%;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .calculated-angle-display {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #4caf50;
+            text-align: center;
+            font-weight: bold;
+            color: #2e7d32;
+        }
     </style>
 </head>
 <body>
@@ -301,7 +385,24 @@
                 
                 <div class="form-group">
                     <label for="angle-input">Tilt Angle (degrees):</label>
-                    <input type="number" id="angle-input" value="10" min="0" max="45" step="1">
+                    <div id="angle-calculation-section" class="angle-calculation-section">
+                        <h4>Calculate Angle From Measurements</h4>
+                        <div class="calc-input-group">
+                            <label for="circle-diameter-input">Calibration Circle Diameter (cm):</label>
+                            <input type="number" id="circle-diameter-input" value="10" step="0.1" min="0.1">
+                        </div>
+                        <div class="calc-input-group">
+                            <label for="tool-difference-input">Max Difference in Tool Lines (10 µm/line):</label>
+                            <input type="number" id="tool-difference-input" value="10" step="1" min="0">
+                        </div>
+                        <div class="calculated-angle-display" id="calculated-angle-display">
+                            Calculated Angle: <span id="calculated-angle-value">0.00°</span>
+                        </div>
+                    </div>
+                    <div class="angle-input-row">
+                        <input type="number" id="angle-input" value="10" min="0" max="45" step="0.01">
+                        <button type="button" class="calculate-from-btn" id="calculate-from-btn">Calculate from</button>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -362,6 +463,54 @@
     <script>
         function getRotationMode() {
             return document.querySelector('input[name="rotation-mode"]:checked').value;
+        }
+
+        function toggleAngleCalculation() {
+            const section = document.getElementById('angle-calculation-section');
+            section.classList.toggle('visible');
+
+            // If visible, calculate the angle immediately
+            if (section.classList.contains('visible')) {
+                calculateAngleFromMeasurements();
+            }
+        }
+
+        function calculateAngleFromMeasurements() {
+            const circleDiameterCm = parseFloat(document.getElementById('circle-diameter-input').value);
+            const toolDifferenceLines = parseFloat(document.getElementById('tool-difference-input').value);
+
+            if (isNaN(circleDiameterCm) || isNaN(toolDifferenceLines) || circleDiameterCm <= 0) {
+                return;
+            }
+
+            // Convert units:
+            // Circle diameter: cm to mm
+            const circleDiameterMm = circleDiameterCm * 10;
+
+            // Tool difference: lines * 10 µm/line = µm, then µm to mm
+            const toolDifferenceMm = (toolDifferenceLines * 10) / 1000;
+
+            // Calculate angle using the formula:
+            // α = arcsin(tool_difference_mm / circle_diameter_mm) × 180/π
+            const ratio = toolDifferenceMm / circleDiameterMm;
+
+            // Ensure ratio is within valid range for arcsin
+            if (Math.abs(ratio) > 1) {
+                document.getElementById('calculated-angle-value').textContent = 'Invalid (ratio > 1)';
+                return;
+            }
+
+            const angleRad = Math.asin(ratio);
+            const angleDeg = angleRad * (180 / Math.PI);
+
+            // Update the display
+            document.getElementById('calculated-angle-value').textContent = angleDeg.toFixed(2) + '°';
+
+            // Update the angle input
+            document.getElementById('angle-input').value = angleDeg.toFixed(2);
+
+            // Recalculate the coordinates
+            calculate();
         }
 
         function updateModeIndicator() {
@@ -705,13 +854,13 @@
         window.onload = function() {
             updateModeIndicator();
             calculate();
-            
+
             // Add event listeners
             ['ml-input', 'dv-input', 'angle-input', 'direction-select'].forEach(id => {
                 document.getElementById(id).addEventListener('input', calculate);
                 document.getElementById(id).addEventListener('change', calculate);
             });
-            
+
             // Add mode change listener
             document.querySelectorAll('input[name="rotation-mode"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -719,6 +868,15 @@
                     calculate();
                 });
             });
+
+            // Add calculate from button listener
+            document.getElementById('calculate-from-btn').addEventListener('click', toggleAngleCalculation);
+
+            // Add calculation input listeners
+            document.getElementById('circle-diameter-input').addEventListener('input', calculateAngleFromMeasurements);
+            document.getElementById('circle-diameter-input').addEventListener('change', calculateAngleFromMeasurements);
+            document.getElementById('tool-difference-input').addEventListener('input', calculateAngleFromMeasurements);
+            document.getElementById('tool-difference-input').addEventListener('change', calculateAngleFromMeasurements);
         };
     </script>
 </body>
