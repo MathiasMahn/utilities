@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plate Layout Generator</title>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --muted: #6b7480;
+    --line: #d8dde3;
+    --bg: #f4f6f8;
+    --panel: #ffffff;
+    --accent: #156082;
+    /* A4 landscape (297 x 210mm) minus the 10mm @page margins on each side,
+       minus 2mm of slack: a box exactly the size of the printable area can
+       round up and spill a second, blank page. Screen and print use the same
+       numbers, so the on-screen page is exactly what comes out of the printer. */
+    --page-w: 275mm;
+    --page-h: 188mm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Aptos Narrow", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+
+  /* ---------- controls (screen only) ---------- */
+  .controls {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 22px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .controls h1 {
+    margin: 0 auto 0 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .02em;
+  }
+  .controls label { font-size: 13px; color: var(--muted); }
+  button, select, input[type=file] { font: inherit; font-size: 13px; }
+  button {
+    padding: 7px 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--panel);
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  .msg { padding: 10px 22px; font-size: 13px; color: #a3341f; background: #fdeeea; }
+  .msg:empty { display: none; }
+
+  .drop {
+    margin: 40px auto;
+    max-width: 620px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+    border: 2px dashed var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+  }
+  .drop.over { border-color: var(--accent); color: var(--accent); }
+  .drop strong { display: block; margin-bottom: 6px; font-size: 16px; color: var(--ink); }
+
+  /* ---------- the sheet ----------
+     .page is exactly the printable area of A4 landscape minus the 10mm @page
+     margins, so what is on screen is literally what lands on the paper.
+     .page-inner is scaled down by JS if the content would ever exceed it. */
+  .page {
+    width: var(--page-w);
+    height: var(--page-h);
+    margin: 24px auto;
+    padding: 0;
+    overflow: hidden;
+    background: var(--panel);
+    box-shadow: 0 2px 14px rgba(0,0,0,.10);
+  }
+  .page[hidden] { display: none; }
+  .page-inner {
+    width: var(--page-w);
+    height: 100%;
+    padding: 5mm 7mm;
+    transform-origin: top left;
+    display: flex;
+    flex-direction: column;
+  }
+  .sheet-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 7px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid var(--ink);
+    flex: none;
+  }
+  .sheet-head h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: .01em; }
+  .sheet-head .sub { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.45; }
+
+  /* The plate is SVG, not styled divs, for two reasons: preserveAspectRatio
+     makes clipping impossible whatever the plate format, and SVG fills are
+     foreground paint — so the wells keep their colour even when the print
+     dialog's "Background graphics" box is left unticked. */
+  .plate-wrap { flex: 1; min-height: 0; position: relative; margin-top: 4px; }
+  svg#plate { position: absolute; inset: 0; width: 100%; height: 100%; }
+  svg#plate text { font-family: inherit; }
+  svg#plate .hdr { fill: #6b7480; font-size: 22px; font-weight: 600; }
+  svg#plate .lbl { font-weight: 600; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 18px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    flex: none;
+  }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 13px; height: 13px; flex: none; overflow: visible; }
+  .legend .count { color: var(--muted); }
+
+  .sheet-foot {
+    margin-top: 7px;
+    font-size: 9px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex: none;
+  }
+
+  /* ---------- print ---------- */
+  @page { size: A4 landscape; margin: 10mm; }
+  @media print {
+    html, body { margin: 0; padding: 0; background: #fff; }
+    .controls, .drop, .msg { display: none !important; }
+    .page {
+      margin: 0;
+      box-shadow: none;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    /* Belt and braces: this makes Chrome keep the colours when the user does
+       tick "Background graphics"; the SVG fills cover the case where they don't. */
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <h1>Plate Layout Generator</h1>
+  <input type="file" id="file" accept=".xlsx,.xlsm">
+  <label>Sheet <select id="sheetPick" disabled></select></label>
+  <label><input type="checkbox" id="showLegend" checked> Legend</label>
+  <button id="print" class="primary" disabled>Save as PDF&nbsp;/&nbsp;Print</button>
+</div>
+<div class="msg" id="msg"></div>
+
+<div class="drop" id="drop">
+  <strong>Drop an .xlsx file here</strong>
+  Rows A&ndash;H, columns 1&ndash;12. Well fill colours are read from the Excel cell background.
+</div>
+
+<div class="page" id="sheet" hidden>
+  <div class="page-inner" id="pageInner">
+    <div class="sheet-head">
+      <h2 id="title">Plate</h2>
+      <div class="sub" id="subtitle"></div>
+    </div>
+    <div class="plate-wrap"><svg id="plate" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="legend" id="legend"></div>
+    <div class="sheet-foot">
+      <span id="footLeft"></span>
+      <span id="footRight"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   1. Minimal ZIP reader — no libraries.
+   Uses the browser's built-in DecompressionStream for the deflate parts.
+   ===================================================================== */
+async function unzip(buffer) {
+  const u8 = new Uint8Array(buffer);
+  const dv = new DataView(buffer);
+
+  // End of central directory record, scanned backwards over the comment field.
+  let eocd = -1;
+  const floor = Math.max(0, u8.length - 22 - 0xffff);
+  for (let i = u8.length - 22; i >= floor; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("Not a valid .xlsx file (no ZIP directory found).");
+
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  if (off === 0xffffffff) throw new Error("ZIP64 archives are not supported.");
+
+  const dec = new TextDecoder();
+  const entries = new Map();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const method   = dv.getUint16(off + 10, true);
+    const compSize = dv.getUint32(off + 20, true);
+    const nameLen  = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen   = dv.getUint16(off + 32, true);
+    const localOff = dv.getUint32(off + 42, true);
+    const name = dec.decode(u8.subarray(off + 46, off + 46 + nameLen));
+
+    // The local header repeats name/extra with its own lengths — must re-read.
+    const lNameLen  = dv.getUint16(localOff + 26, true);
+    const lExtraLen = dv.getUint16(localOff + 28, true);
+    const start = localOff + 30 + lNameLen + lExtraLen;
+    entries.set(name, { method, data: u8.subarray(start, start + compSize) });
+    off += 46 + nameLen + extraLen + cmtLen;
+  }
+  return entries;
+}
+
+async function readText(entries, name) {
+  const e = entries.get(name);
+  if (!e) return null;
+  if (e.method === 0) return new TextDecoder().decode(e.data);
+  if (e.method !== 8) throw new Error("Unsupported ZIP compression in " + name);
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("This browser lacks DecompressionStream. Use a recent Chrome, Edge, Firefox or Safari.");
+  }
+  const stream = new Blob([e.data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  return await new Response(stream).text();
+}
+
+/* =====================================================================
+   2. XML helpers (OOXML uses namespace prefixes inconsistently)
+   ===================================================================== */
+const parseXml = (s) => new DOMParser().parseFromString(s, "application/xml");
+const kids = (el, local) =>
+  Array.from(el.children).filter((c) => c.localName === local);
+const kid = (el, local) => kids(el, local)[0] || null;
+const all = (doc, local) =>
+  Array.from(doc.getElementsByTagName("*")).filter((e) => e.localName === local);
+
+/* =====================================================================
+   3. Colour resolution: theme colours + Excel's tint algorithm
+   ===================================================================== */
+// Order of <fgColor theme="n"> — note dk1/lt1 are swapped relative to the XML.
+const THEME_ORDER = ["lt1","dk1","lt2","dk2","accent1","accent2","accent3",
+                     "accent4","accent5","accent6","hlink","folHlink"];
+
+const INDEXED = ["000000","FFFFFF","FF0000","00FF00","0000FF","FFFF00","FF00FF","00FFFF",
+  "000000","FFFFFF","FF0000","00FF00","0000FF","FFFF00","FF00FF","00FFFF",
+  "800000","008000","000080","808000","800080","008080","C0C0C0","808080",
+  "9999FF","993366","FFFFCC","CCFFFF","660066","FF8080","0066CC","CCCCFF",
+  "000080","FF00FF","FFFF00","00FFFF","800080","800000","008080","0000FF",
+  "00CCFF","CCFFFF","CCFFCC","FFFF99","99CCFF","FF99CC","CC99FF","FFCC99",
+  "3366FF","33CCCC","99CC00","FFCC00","FF9900","FF6600","666699","969696",
+  "003366","339966","003300","333300","993300","993366","333399","333333"];
+
+function themeColors(themeXml) {
+  const out = {};
+  if (!themeXml) return out;
+  const scheme = all(themeXml, "clrScheme")[0];
+  if (!scheme) return out;
+  for (const node of Array.from(scheme.children)) {
+    const srgb = kid(node, "srgbClr");
+    const sys  = kid(node, "sysClr");
+    if (srgb) out[node.localName] = srgb.getAttribute("val");
+    else if (sys) out[node.localName] = sys.getAttribute("lastClr") ||
+      (sys.getAttribute("val") === "window" ? "FFFFFF" : "000000");
+  }
+  return out;
+}
+
+function rgbToHls(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const l = (mx + mn) / 2;
+  if (mx === mn) return [0, l, 0];
+  const d = mx - mn;
+  const s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+  let h;
+  if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0));
+  else if (mx === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h / 6, l, s];
+}
+function hlsToRgb(h, l, s) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const f = (t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  return [f(h + 1/3), f(h), f(h - 1/3)].map((v) => Math.round(v * 255));
+}
+// ECMA-376 tint: negative darkens, positive lightens, applied to luminance.
+function applyTint(hex, tint) {
+  if (!tint) return hex;
+  const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  let [h, l, s] = rgbToHls(r, g, b);
+  l = tint < 0 ? l * (1 + tint) : l * (1 - tint) + tint;
+  return hlsToRgb(h, Math.min(1, Math.max(0, l)), s)
+    .map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function colorFromNode(node, theme) {
+  if (!node) return null;
+  const tint = parseFloat(node.getAttribute("tint") || "0") || 0;
+  const rgb = node.getAttribute("rgb");
+  if (rgb) {
+    const hex = rgb.length === 8 ? rgb.slice(2) : rgb;   // strip alpha
+    if (rgb.length === 8 && rgb.slice(0,2).toUpperCase() === "00") return null; // fully transparent
+    return applyTint(hex.toUpperCase(), tint);
+  }
+  const th = node.getAttribute("theme");
+  if (th !== null) {
+    const name = THEME_ORDER[+th];
+    const hex = theme[name];
+    return hex ? applyTint(hex.toUpperCase(), tint) : null;
+  }
+  const idx = node.getAttribute("indexed");
+  if (idx !== null) {
+    const hex = INDEXED[+idx];                            // 64/65 = system fg/bg
+    return hex ? applyTint(hex, tint) : null;
+  }
+  return null;
+}
+
+/* =====================================================================
+   4. Workbook parsing
+   ===================================================================== */
+function parseStyles(stylesXml, theme) {
+  const fills = [];
+  const fillsEl = stylesXml && kid(stylesXml.documentElement, "fills");
+  if (fillsEl) {
+    for (const f of kids(fillsEl, "fill")) {
+      const pf = kid(f, "patternFill");
+      const type = pf ? pf.getAttribute("patternType") : "none";
+      if (!pf || !type || type === "none" || type === "gray125") { fills.push(null); continue; }
+      // Solid fills carry the visible colour in fgColor; other patterns approximate with bgColor.
+      fills.push(colorFromNode(kid(pf, "fgColor"), theme) || colorFromNode(kid(pf, "bgColor"), theme));
+    }
+  }
+  const styleFill = [];
+  const csx = stylesXml && kid(stylesXml.documentElement, "cellStyleXfs");
+  if (csx) for (const xf of kids(csx, "xf")) styleFill.push(+(xf.getAttribute("fillId") || 0));
+
+  const cellFill = [];
+  const cx = stylesXml && kid(stylesXml.documentElement, "cellXfs");
+  if (cx) {
+    for (const xf of kids(cx, "xf")) {
+      let id = +(xf.getAttribute("fillId") || 0);
+      if (!id) {                                  // inherit from the named cell style
+        const parent = styleFill[+(xf.getAttribute("xfId") || 0)];
+        if (parent) id = parent;
+      }
+      cellFill.push(fills[id] || null);
+    }
+  }
+  return cellFill;
+}
+
+function sharedStrings(xml) {
+  if (!xml) return [];
+  return all(xml, "si").map((si) =>
+    all(si, "t").map((t) => t.textContent).join(""));
+}
+
+const colToNum = (ref) => {
+  const letters = ref.replace(/[0-9]/g, "");
+  let n = 0;
+  for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n;
+};
+
+/** Returns Map "r,c" -> {text, fill} for one worksheet. */
+function readCells(sheetXml, strings, cellFill) {
+  const cells = new Map();
+  for (const c of all(sheetXml, "c")) {
+    const ref = c.getAttribute("r");
+    if (!ref) continue;
+    const row = +ref.replace(/[^0-9]/g, "");
+    const col = colToNum(ref);
+    const type = c.getAttribute("t");
+    const sIdx = c.getAttribute("s");
+    let text = "";
+    if (type === "s") {
+      text = strings[+kid(c, "v").textContent] || "";
+    } else if (type === "inlineStr") {
+      const is = kid(c, "is");
+      text = is ? all(is, "t").map((t) => t.textContent).join("") : "";
+    } else {
+      const v = kid(c, "v");
+      text = v ? v.textContent : "";
+    }
+    cells.set(row + "," + col, {
+      text: text.trim(),
+      fill: sIdx !== null ? cellFill[+sIdx] || null : null,
+    });
+  }
+  return cells;
+}
+
+/* =====================================================================
+   5. Locate the plate inside the sheet
+   Finds a row of consecutive numbers 1..N and a column of letters A..
+   ===================================================================== */
+const ROW_LETTERS = "ABCDEFGHIJKLMNOP".split("");
+
+function findPlate(cells) {
+  const byRow = new Map();
+  for (const [key, val] of cells) {
+    const [r, c] = key.split(",").map(Number);
+    if (!byRow.has(r)) byRow.set(r, new Map());
+    byRow.get(r).set(c, val);
+  }
+
+  let best = null;
+  for (const [r, row] of byRow) {
+    // Where does a run 1,2,3,... start on this row?
+    for (const [c, val] of row) {
+      if (val.text !== "1") continue;
+      let n = 1;
+      while (row.has(c + n) && row.get(c + n).text === String(n + 1)) n++;
+      if (n < 3) continue;
+      // Row letters live one column left of the numbers, starting below.
+      const letters = [];
+      let rr = r + 1;
+      while (rr - r - 1 < ROW_LETTERS.length) {
+        const cell = byRow.get(rr) && byRow.get(rr).get(c - 1);
+        if (!cell || cell.text.toUpperCase() !== ROW_LETTERS[rr - r - 1]) break;
+        letters.push(ROW_LETTERS[rr - r - 1]);
+        rr++;
+      }
+      if (letters.length < 2) continue;
+      const score = n * letters.length;
+      if (!best || score > best.score) {
+        best = { score, headerRow: r, firstCol: c, cols: n, rows: letters };
+      }
+    }
+  }
+  return best;
+}
+
+function findTitle(cells, plate) {
+  for (const [key, val] of cells) {
+    if (/^title:?$/i.test(val.text)) {
+      const [r, c] = key.split(",").map(Number);
+      const right = cells.get(r + "," + (c + 1));
+      if (right && right.text) return right.text;
+    }
+  }
+  // Fall back to the first text cell above the plate.
+  if (plate) {
+    for (let r = 1; r < plate.headerRow; r++) {
+      for (let c = 1; c < plate.firstCol + plate.cols; c++) {
+        const cell = cells.get(r + "," + c);
+        if (cell && cell.text && !/^title:?$/i.test(cell.text)) return cell.text;
+      }
+    }
+  }
+  return null;
+}
+
+/* =====================================================================
+   6. Rendering
+   ===================================================================== */
+const textColorFor = (hex) => {
+  if (!hex) return "";
+  const r = parseInt(hex.slice(0,2),16), g = parseInt(hex.slice(2,4),16), b = parseInt(hex.slice(4,6),16);
+  // Relative luminance, sRGB weights.
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#1b1f24" : "#ffffff";
+};
+
+const wellAt = (plate, cells, ri, ci) =>
+  cells.get((plate.headerRow + 1 + ri) + "," + (plate.firstCol + ci)) || { text: "", fill: null };
+
+/** Legend entries: one per label group ("17/1"…"17/11" → 17). Labels without that
+ *  structure would give one entry per well, so those fall back to colour groups. */
+function legendEntries(plate, cells) {
+  const byLabel = new Map();  // "17" -> {fill, n}
+  const byFill = new Map();   // fill -> {labels, n}
+  for (let ri = 0; ri < plate.rows.length; ri++) {
+    for (let ci = 0; ci < plate.cols; ci++) {
+      const cell = wellAt(plate, cells, ri, ci);
+      if (!cell.text) continue;
+      const key = cell.text.includes("/") ? cell.text.split("/")[0] : cell.text;
+      if (!byLabel.has(key)) byLabel.set(key, { fill: cell.fill, n: 0 });
+      byLabel.get(key).n++;
+      const f = cell.fill || "";
+      if (!byFill.has(f)) byFill.set(f, { labels: [], n: 0 });
+      byFill.get(f).n++;
+      if (byFill.get(f).labels.length < 3) byFill.get(f).labels.push(cell.text);
+    }
+  }
+  return byLabel.size <= 24
+    ? [...byLabel].map(([name, g]) => [name, g.fill, g.n])
+    : [...byFill].map(([fill, g]) => [g.labels.join(", ") + (g.n > 3 ? ", …" : ""), fill, g.n]);
+}
+
+function renderLegend(entries, show) {
+  const legend = document.getElementById("legend");
+  legend.innerHTML = "";
+  for (const [name, fill, n] of entries) {
+    const item = document.createElement("div");
+    item.className = "item";
+    // SVG rather than a coloured <span>: same reason as the wells — it survives
+    // printing with "Background graphics" switched off.
+    const sw = svgEl("svg", { class: "swatch", viewBox: "0 0 14 14" });
+    sw.appendChild(svgEl("rect", {
+      x: 0.8, y: 0.8, width: 12.4, height: 12.4, rx: 3,
+      fill: fill ? "#" + fill : "#ffffff",
+      stroke: "rgba(0,0,0,.30)", "stroke-width": 1.4,
+      "stroke-dasharray": fill ? "none" : "3 2.5",
+    }));
+    const txt = document.createElement("span");
+    txt.textContent = name;
+    const cnt = document.createElement("span");
+    cnt.className = "count";
+    cnt.textContent = "(" + n + ")";
+    item.append(sw, txt, cnt);
+    legend.appendChild(item);
+  }
+  legend.hidden = !show || !entries.length;
+}
+
+// Geometry in SVG user units; the viewBox scales the whole thing to the page.
+const PITCH = 100;      // centre-to-centre well spacing
+const R = 45;           // well radius
+const ROW_HEAD = 46;    // width of the A/B/C… gutter
+const COL_HEAD = 40;    // height of the 1/2/3… strip
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const svgEl = (name, attrs) => {
+  const el = document.createElementNS(SVG_NS, name);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+};
+
+function buildPlate(plate, cells) {
+  const svg = document.getElementById("plate");
+  svg.textContent = "";
+
+  const nCols = plate.cols, nRows = plate.rows.length;
+  const w = ROW_HEAD + nCols * PITCH;
+  const h = COL_HEAD + nRows * PITCH;
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  // "meet" scales to fit inside the box and centres — the plate can never be clipped.
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+  for (let ci = 0; ci < nCols; ci++) {
+    const t = svgEl("text", {
+      class: "hdr", x: ROW_HEAD + (ci + 0.5) * PITCH, y: COL_HEAD - 14,
+      "text-anchor": "middle",
+    });
+    t.textContent = ci + 1;
+    svg.appendChild(t);
+  }
+
+  const labels = [];
+  plate.rows.forEach((letter, ri) => {
+    const cy = COL_HEAD + (ri + 0.5) * PITCH;
+    const t = svgEl("text", {
+      class: "hdr", x: ROW_HEAD - 16, y: cy,
+      "text-anchor": "end", "dominant-baseline": "central",
+    });
+    t.textContent = letter;
+    svg.appendChild(t);
+
+    for (let ci = 0; ci < nCols; ci++) {
+      const cell = wellAt(plate, cells, ri, ci);
+      const cx = ROW_HEAD + (ci + 0.5) * PITCH;
+
+      const circle = svgEl("circle", {
+        cx, cy, r: R,
+        fill: cell.fill ? "#" + cell.fill : "#ffffff",
+        stroke: cell.fill ? "rgba(0,0,0,.30)" : "#d8dde3",
+        "stroke-width": 1.6,
+      });
+      if (!cell.fill) circle.setAttribute("stroke-dasharray", "5 4");
+      const tip = svgEl("title");
+      tip.textContent = letter + (ci + 1) + (cell.text ? " — " + cell.text : "");
+      circle.appendChild(tip);
+      svg.appendChild(circle);
+
+      if (!cell.text) continue;
+      const label = svgEl("text", {
+        class: "lbl", x: cx, y: cy,
+        "text-anchor": "middle", "dominant-baseline": "central",
+        "font-size": 26, fill: textColorFor(cell.fill) || "#1b1f24",
+      });
+      label.textContent = cell.text;
+      svg.appendChild(label);
+      labels.push(label);
+    }
+  });
+
+  // Shrink any label that would spill outside its well. Measured, not guessed,
+  // so unusually long sample names stay inside the circle.
+  const maxW = 2 * R * 0.84;
+  for (const label of labels) {
+    const len = label.getComputedTextLength();
+    if (len > maxW) label.setAttribute("font-size", Math.max(9, 26 * maxW / len).toFixed(1));
+  }
+}
+
+/** Last line of defence for the HTML chrome: a very long title or a legend with
+ *  many entries could still push past the A4 box, so scale the page to fit. */
+function fitPage() {
+  const page = document.getElementById("sheet");
+  const inner = document.getElementById("pageInner");
+  inner.style.transform = "none";
+  inner.style.width = "";
+  inner.style.height = "";
+
+  const boxW = page.clientWidth, boxH = page.clientHeight;
+  const scale = Math.min(1, boxW / inner.scrollWidth, boxH / inner.scrollHeight);
+  if (scale < 1) {
+    // Grow the layout box by 1/scale first so the scaled result still fills the page.
+    inner.style.width = boxW / scale + "px";
+    inner.style.height = boxH / scale + "px";
+    inner.style.transform = "scale(" + scale + ")";
+  }
+  return scale;
+}
+
+function render(plate, cells, meta) {
+  document.getElementById("title").textContent = meta.title || meta.filename;
+  document.getElementById("subtitle").innerHTML =
+    plate.rows.length + " &times; " + plate.cols + " (" + plate.rows.length * plate.cols + " wells)" +
+    "<br>" + meta.sheetName;
+  document.getElementById("footLeft").textContent = meta.filename;
+  document.getElementById("footRight").textContent = new Date().toLocaleString();
+  renderLegend(legendEntries(plate, cells), document.getElementById("showLegend").checked);
+
+  document.getElementById("sheet").hidden = false;
+  document.getElementById("drop").hidden = true;
+  document.getElementById("print").disabled = false;
+
+  // The plate must be visible before building it: label fitting measures text.
+  buildPlate(plate, cells);
+  fitPage();
+}
+
+/* =====================================================================
+   7. Wiring
+   ===================================================================== */
+let book = null;   // { filename, sheets: [{name, cells}] }
+
+const msg = (t) => { document.getElementById("msg").textContent = t || ""; };
+
+async function loadFile(file) {
+  msg("");
+  try {
+    const entries = await unzip(await file.arrayBuffer());
+
+    const theme    = themeColors(await readText(entries, "xl/theme/theme1.xml").then(t => t ? parseXml(t) : null));
+    const stylesTx = await readText(entries, "xl/styles.xml");
+    const cellFill = parseStyles(stylesTx ? parseXml(stylesTx) : null, theme);
+    const ssTx     = await readText(entries, "xl/sharedStrings.xml");
+    const strings  = sharedStrings(ssTx ? parseXml(ssTx) : null);
+
+    // Sheet name -> part path, via workbook.xml + its rels.
+    const wbTx = await readText(entries, "xl/workbook.xml");
+    if (!wbTx) throw new Error("No workbook found inside the file.");
+    const wb = parseXml(wbTx);
+    const relsTx = await readText(entries, "xl/_rels/workbook.xml.rels");
+    const rels = new Map();
+    if (relsTx) {
+      for (const r of all(parseXml(relsTx), "Relationship")) {
+        let target = r.getAttribute("Target").replace(/^\//, "");
+        if (!target.startsWith("xl/")) target = "xl/" + target;
+        rels.set(r.getAttribute("Id"), target);
+      }
+    }
+
+    const sheets = [];
+    let idx = 0;
+    for (const s of all(wb, "sheet")) {
+      idx++;
+      const rid = s.getAttribute("r:id") || s.getAttributeNS(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+      const path = rels.get(rid) || ("xl/worksheets/sheet" + idx + ".xml");
+      const tx = await readText(entries, path);
+      if (!tx) continue;
+      sheets.push({ name: s.getAttribute("name"), cells: readCells(parseXml(tx), strings, cellFill) });
+    }
+    if (!sheets.length) throw new Error("The workbook contains no readable worksheets.");
+
+    book = { filename: file.name, sheets };
+    const pick = document.getElementById("sheetPick");
+    pick.innerHTML = "";
+    sheets.forEach((s, i) => {
+      const o = document.createElement("option");
+      o.value = i;
+      o.textContent = s.name;
+      pick.appendChild(o);
+    });
+    pick.disabled = sheets.length < 2;
+
+    // Prefer the first sheet that actually contains a plate.
+    const hit = sheets.findIndex((s) => findPlate(s.cells));
+    pick.value = hit < 0 ? 0 : hit;
+    showSheet();
+  } catch (err) {
+    console.error(err);
+    msg(err.message || String(err));
+  }
+}
+
+function showSheet() {
+  if (!book) return;
+  const sheet = book.sheets[+document.getElementById("sheetPick").value];
+  const plate = findPlate(sheet.cells);
+  if (!plate) {
+    document.getElementById("sheet").hidden = true;
+    document.getElementById("drop").hidden = false;
+    msg('No plate found on "' + sheet.name + '". Expected a row of column numbers 1, 2, 3… with row letters A, B, C… in the column to their left.');
+    return;
+  }
+  msg("");
+  render(plate, sheet.cells, {
+    filename: book.filename,
+    sheetName: sheet.name,
+    title: findTitle(sheet.cells, plate),
+  });
+}
+
+document.getElementById("file").addEventListener("change", (e) => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+document.getElementById("sheetPick").addEventListener("change", showSheet);
+document.getElementById("showLegend").addEventListener("change", showSheet);
+document.getElementById("print").addEventListener("click", () => window.print());
+
+const drop = document.getElementById("drop");
+["dragenter", "dragover"].forEach((ev) =>
+  document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) =>
+  document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+document.addEventListener("drop", (e) => {
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+</script>
+</body>
+</html>
