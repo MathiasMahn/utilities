@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flip Monitors · Mahn Research Group</title>
+    <meta name="description" content="A small Windows script that swaps the left and right monitor in a two-monitor setup with one click.">
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../assets/mahn.css">
+    <style>
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 20rem;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 56rem) {
+            .layout { grid-template-columns: 1fr; }
+        }
+        .stack { display: grid; gap: 1.25rem; }
+
+        .mm-card h2 {
+            margin: 0 0 0.6rem;
+            font-family: var(--mm-font-display);
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+        .mm-card p { margin: 0 0 0.8rem; color: var(--mm-ink-soft); }
+        .mm-card p:last-child { margin-bottom: 0; }
+        .mm-card ul { margin: 0 0 0.8rem; padding-left: 1.2rem; color: var(--mm-ink-soft); }
+        .mm-card li { margin-bottom: 0.35rem; }
+        code {
+            font-family: var(--mm-font-mono);
+            font-size: 0.88em;
+            background: var(--mm-paper-alt);
+            border: 1px solid var(--mm-line);
+            border-radius: 4px;
+            padding: 0.05em 0.35em;
+        }
+
+        /* before / after illustration */
+        .flip-demo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 0.5rem 0 0.25rem;
+        }
+        .flip-demo svg { width: 11rem; height: auto; }
+        .flip-demo .arrow { font-size: 1.6rem; color: var(--mm-accent); }
+        .flip-demo figcaption { text-align: center; font-size: 0.85rem; color: var(--mm-ink-faint); }
+        .flip-demo figure { margin: 0; }
+
+        /* numbered steps */
+        .steps { list-style: none; counter-reset: step; padding: 0 !important; margin: 0; }
+        .steps li {
+            counter-increment: step;
+            position: relative;
+            padding-left: 2.6rem;
+            margin-bottom: 1rem !important;
+            color: var(--mm-ink) !important;
+        }
+        .steps li::before {
+            content: counter(step);
+            position: absolute; left: 0; top: -0.05rem;
+            width: 1.8rem; height: 1.8rem; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--mm-accent-wash); color: var(--mm-accent-strong);
+            font-weight: 700; font-size: 0.9rem;
+        }
+        .steps li span { display: block; color: var(--mm-ink-soft); font-size: 0.93rem; margin-top: 0.15rem; }
+
+        /* download box */
+        .download { position: sticky; top: 1rem; }
+        .download .app {
+            display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;
+        }
+        .download .app img { width: 48px; height: 48px; }
+        .download .app strong { display: block; font-family: var(--mm-font-display); font-size: 1.15rem; }
+        .download .app span { font-size: 0.85rem; color: var(--mm-ink-faint); }
+        .download .files { display: grid; gap: 0.6rem; margin-bottom: 1rem; }
+        .download .mm-btn { width: 100%; justify-content: space-between; }
+        .download .mm-btn small { font-weight: 400; opacity: 0.8; }
+        .download .note { font-size: 0.85rem; color: var(--mm-ink-faint); margin: 0; }
+
+        .callout {
+            background: var(--mm-warn-wash);
+            border-left: 4px solid #d9a21b;
+            border-radius: 0 8px 8px 0;
+            padding: 0.8rem 1rem;
+            font-size: 0.93rem;
+            color: var(--mm-ink);
+        }
+        .callout strong { color: var(--mm-warn); }
+    </style>
+</head>
+<body>
+<header class="mm-header">
+    <div class="mm-wrap mm-bar">
+        <a class="mm-brand" href="https://mathiasmahn.org/">
+            <img src="../assets/logo-mark.png" alt="" width="30" height="38">
+            <span class="mm-brand-text"><span class="mm-brand-name">Mahn Research Group</span><span class="mm-brand-sub">FMI Basel</span></span>
+        </a>
+        <nav class="mm-nav" aria-label="Main">
+            <a href="../">All utilities</a>
+            <a href="https://mathiasmahn.org/">mathiasmahn.org</a>
+        </nav>
+    </div>
+</header>
+
+<section class="mm-hero">
+    <div class="mm-wrap">
+        <p class="mm-eyebrow">Utilities · Windows download</p>
+        <h1>Flip Monitors</h1>
+        <p class="mm-lead">Swap your left and right monitor with one click — handy when a laptop or second screen ends up on the other side of the desk. This one is a small Windows script you download and run, not a web tool.</p>
+    </div>
+</section>
+
+<main class="mm-main">
+    <div class="mm-wrap layout">
+        <div class="stack">
+            <section class="mm-card">
+                <h2>What it does</h2>
+                <div class="flip-demo" aria-hidden="true">
+                    <figure>
+                        <svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="10" width="96" height="62" rx="5" fill="#e8f2fa" stroke="#2b86c5" stroke-width="3"/>
+                            <rect x="118" y="10" width="96" height="62" rx="5" fill="#fff" stroke="#7b8794" stroke-width="3"/>
+                            <rect x="44" y="72" width="20" height="14" fill="#2b86c5"/><rect x="34" y="86" width="40" height="5" rx="2" fill="#2b86c5"/>
+                            <rect x="156" y="72" width="20" height="14" fill="#7b8794"/><rect x="146" y="86" width="40" height="5" rx="2" fill="#7b8794"/>
+                            <text x="54" y="48" text-anchor="middle" font-family="Inter Variable, sans-serif" font-weight="700" font-size="22" fill="#1c6aa1">1</text>
+                            <text x="166" y="48" text-anchor="middle" font-family="Inter Variable, sans-serif" font-weight="700" font-size="22" fill="#4a5866">2</text>
+                        </svg>
+                        <figcaption>before</figcaption>
+                    </figure>
+                    <span class="arrow">⇄</span>
+                    <figure>
+                        <svg viewBox="0 0 220 110" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="10" width="96" height="62" rx="5" fill="#fff" stroke="#7b8794" stroke-width="3"/>
+                            <rect x="118" y="10" width="96" height="62" rx="5" fill="#e8f2fa" stroke="#2b86c5" stroke-width="3"/>
+                            <rect x="44" y="72" width="20" height="14" fill="#7b8794"/><rect x="34" y="86" width="40" height="5" rx="2" fill="#7b8794"/>
+                            <rect x="156" y="72" width="20" height="14" fill="#2b86c5"/><rect x="146" y="86" width="40" height="5" rx="2" fill="#2b86c5"/>
+                            <text x="54" y="48" text-anchor="middle" font-family="Inter Variable, sans-serif" font-weight="700" font-size="22" fill="#4a5866">2</text>
+                            <text x="166" y="48" text-anchor="middle" font-family="Inter Variable, sans-serif" font-weight="700" font-size="22" fill="#1c6aa1">1</text>
+                        </svg>
+                        <figcaption>after</figcaption>
+                    </figure>
+                </div>
+                <ul>
+                    <li>Mirrors the monitor arrangement left-to-right, exactly as if you had dragged the screens around in <em>Settings → System → Display</em>.</li>
+                    <li>Your main (primary) monitor stays the main monitor; only the positions change. Resolution, scaling and vertical alignment are left as they are.</li>
+                    <li>The new layout is saved, so it stays after a restart. Run it again to flip back.</li>
+                    <li>With more than two monitors, the whole row is mirrored around the main monitor.</li>
+                </ul>
+            </section>
+
+            <section class="mm-card">
+                <h2>Install</h2>
+                <ol class="steps">
+                    <li>Download both files and put them together in a folder that will stay put, for example <code>Documents\Flip Monitors</code>.
+                        <span>The desktop shortcut points to this folder, so don't leave them in Downloads if you clean that up.</span></li>
+                    <li>Double-click <code>add-flip-shortcut.cmd</code> once.
+                        <span>It adds a <strong>Flip Monitors</strong> shortcut with its own icon to your desktop. You can right-click it and pin it to the taskbar or Start.</span></li>
+                    <li>Click the shortcut whenever you want to swap the monitors.
+                        <span>You can also just double-click <code>flip-monitors.cmd</code> directly — the shortcut is only for convenience.</span></li>
+                </ol>
+                <p>If you move the folder later, run <code>add-flip-shortcut.cmd</code> again to update the shortcut.</p>
+            </section>
+
+            <section class="mm-card">
+                <h2>If Windows warns you</h2>
+                <div class="callout">
+                    <p>Windows flags scripts downloaded from the internet. If you see <strong>"Windows protected your PC"</strong>, click <em>More info → Run anyway</em>. You can avoid the prompt by right-clicking each file → <em>Properties</em> → tick <em>Unblock</em> → <em>OK</em>.</p>
+                </div>
+                <p style="margin-top: 0.9rem;">On managed work computers, IT may block scripts entirely. In that case, ask them — or flip the monitors by hand in Display settings.</p>
+            </section>
+
+            <section class="mm-card">
+                <h2>How it works</h2>
+                <p>Both files are plain text — open them in Notepad to read exactly what they do before running them.</p>
+                <ul>
+                    <li><code>flip-monitors.cmd</code> starts PowerShell for this one script (no admin rights needed) and uses the standard Windows display API to read each monitor's position and write the mirrored one.</li>
+                    <li><code>add-flip-shortcut.cmd</code> saves the icon, which is embedded in the file, as <code>flip-monitors.ico</code> next to it and creates the desktop shortcut. Nothing is downloaded or installed.</li>
+                    <li>If something goes wrong (for example, only one monitor is connected), the window stays open with a short explanation instead of closing.</li>
+                </ul>
+            </section>
+        </div>
+
+        <aside class="mm-card download" aria-label="Download">
+            <div class="app">
+                <img src="flip-monitors.ico" alt="" width="48" height="48">
+                <div><strong>Flip Monitors</strong><span>Windows 10 and 11</span></div>
+            </div>
+            <div class="files">
+                <a class="mm-btn mm-btn--primary" href="flip-monitors.cmd" download>flip-monitors.cmd <small>6 KB</small></a>
+                <a class="mm-btn" href="add-flip-shortcut.cmd" download>add-flip-shortcut.cmd <small>31 KB</small></a>
+            </div>
+            <p class="note">Download both into the same folder. <a href="https://github.com/MathiasMahn/utilities/tree/main/flip_monitors">View the source on GitHub</a>.</p>
+        </aside>
+    </div>
+</main>
+
+<footer class="mm-footer">
+    <div class="mm-wrap">
+        <span>© Mathias Mahn · Mahn Research Group, FMI Basel</span>
+        <span><a href="https://github.com/MathiasMahn/utilities">Source on GitHub</a> · <a href="https://mathiasmahn.org/">mathiasmahn.org</a></span>
+    </div>
+</footer>
+</body>
+</html>

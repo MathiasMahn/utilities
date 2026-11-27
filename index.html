@@ -30,6 +30,17 @@
         .tool h2 a:hover { color: var(--mm-accent-strong); }
         .tool p { margin: 0 0 1rem; color: var(--mm-ink-soft); font-size: 0.95rem; flex: 1; }
         .tool .mm-btn { align-self: flex-start; }
+        .tool .tag {
+            flex: none;
+            align-self: flex-start;
+            margin: 0 0 0.5rem;
+            padding: 0.1rem 0.55rem;
+            border-radius: 999px;
+            background: var(--mm-warn-wash);
+            color: var(--mm-warn);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -50,7 +61,7 @@
         <div class="mm-wrap">
             <p class="mm-eyebrow">Resources</p>
             <h1>Utilities</h1>
-            <p class="mm-lead">Small browser-based helpers we built for our experiments. Everything runs locally in your browser — no data is uploaded.</p>
+            <p class="mm-lead">Small helpers we built for our experiments. The web tools run locally in your browser — no data is uploaded.</p>
         </div>
     </section>
 
@@ -78,6 +89,13 @@
                 <h2><a href="./noise_generator/">Noise Generator</a></h2>
                 <p>Generates customizable noise across multiple frequency bands, with presets, precise volume control and a timer — for sleep and focus.</p>
                 <a class="mm-btn" href="./noise_generator/">Open tool →</a>
+            </article>
+
+            <article class="mm-card tool">
+                <p class="tag">Windows download</p>
+                <h2><a href="./flip_monitors/">Flip Monitors</a></h2>
+                <p>Swaps the left and right monitor in a two-monitor setup with one click. A small script you download and run, with an optional desktop shortcut.</p>
+                <a class="mm-btn" href="./flip_monitors/">Details &amp; download →</a>
             </article>
 
             <!-- Add more tools here as you create them -->
