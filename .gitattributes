@@ -1,0 +1,3 @@
+# Windows batch files must keep CRLF line endings, also in the copies GitHub Pages serves.
+*.cmd -text
+*.bat -text
