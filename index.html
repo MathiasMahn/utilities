@@ -3,62 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Utilities - MathiasMahn</title>
+    <title>Utilities · Mahn Research Group</title>
+    <meta name="description" content="Small browser-based tools for the lab, from the Mahn Research Group at the FMI, Basel.">
+    <link rel="icon" type="image/png" href="./assets/favicon.png">
+    <link rel="stylesheet" href="./assets/mahn.css">
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            max-width: 800px; 
-            margin: 50px auto; 
-            padding: 20px; 
-            background: #f5f5f5;
+        .tools {
+            display: grid;
+            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
         }
-        .tool-card {
-            background: white;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .tool {
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.15s, transform 0.15s;
         }
-        .tool-card h2 { color: #2c3e50; }
-        .tool-card a { 
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 10px;
+        .tool:hover { border-color: var(--mm-accent); transform: translateY(-2px); }
+        .tool h2 {
+            margin: 0 0 0.4rem;
+            font-family: var(--mm-font-display);
+            font-weight: 600;
+            font-size: 1.2rem;
+            line-height: 1.25;
         }
-        .tool-card a:hover { background: #2980b9; }
+        .tool h2 a { color: var(--mm-ink); text-decoration: none; }
+        .tool h2 a:hover { color: var(--mm-accent-strong); }
+        .tool p { margin: 0 0 1rem; color: var(--mm-ink-soft); font-size: 0.95rem; flex: 1; }
+        .tool .mm-btn { align-self: flex-start; }
     </style>
 </head>
 <body>
-    <h1>🛠️ Utilities Collection</h1>
-    
-    <div class="tool-card">
-        <h2>🧠 Bpod State Matrix Parser</h2>
-        <p>A web-based tool for parsing and analyzing Bpod 2+ state matrix data. Supports tuple format input and provides detailed analysis of state machines, timers, counters, and conditions.</p>
-        <a href="./Bpod_SM_parser/">Launch Tool</a>
-    </div>
-    
-    <div class="tool-card">         
-        <h2>📐 Coordinate Angle Calculator</h2>         
-        <p>A web-based tool for calculating new coordinates after tilting a holder by a specified angle. Visualizes coordinate transformations with interactive graphs.</p>         
-        <a href="./coordinate_angle_calculator/">Launch Tool</a>     
-    </div>
+    <header class="mm-header">
+        <div class="mm-wrap mm-bar">
+            <a class="mm-brand" href="https://mathiasmahn.org/">
+                <img src="./assets/logo-mark.png" alt="" width="30" height="38">
+                <span class="mm-brand-text"><span class="mm-brand-name">Mahn Research Group</span><span class="mm-brand-sub">FMI Basel</span></span>
+            </a>
+            <nav class="mm-nav" aria-label="Main">
+                <a href="./" aria-current="page">Utilities</a>
+                <a href="https://mathiasmahn.org/">mathiasmahn.org</a>
+            </nav>
+        </div>
+    </header>
 
-    <div class="tool-card">         
-        <h2>🎵 Noise Generator</h2>         
-        <p>A web-based tool for generating customizable noise profiles across multiple frequency bands. Features presets, precise volume control, and timer functionality for sleep and focus.</p>         
-        <a href="./noise_generator/">Launch Tool</a>     
-    </div>
-    <div class="tool-card">
-        <h2>🧫 Plate Layout Generator</h2>
-        <p>A web-based tool for turning an Excel plate sheet into a printable layout. Reads the well labels and their cell background colours straight from the .xlsx and lays them out as a one-page A4 PDF. Works with any plate format from 6 to 384 wells.</p>
-        <a href="./plate_layout_generator/">Launch Tool</a>
-    </div>
+    <section class="mm-hero">
+        <div class="mm-wrap">
+            <p class="mm-eyebrow">Resources</p>
+            <h1>Utilities</h1>
+            <p class="mm-lead">Small browser-based helpers we built for our experiments. Everything runs locally in your browser — no data is uploaded.</p>
+        </div>
+    </section>
 
-    <!-- Add more tools here as you create them -->
-    
+    <main class="mm-main">
+        <div class="mm-wrap tools">
+            <article class="mm-card tool">
+                <h2><a href="./Bpod_SM_parser/">Bpod State Matrix Parser</a></h2>
+                <p>Parses and analyzes Bpod 2+ state matrix data. Supports tuple and binary input and gives a detailed breakdown of states, timers, counters and conditions.</p>
+                <a class="mm-btn" href="./Bpod_SM_parser/">Open tool →</a>
+            </article>
+
+            <article class="mm-card tool">
+                <h2><a href="./coordinate_angle_calculator/">Coordinate Angle Calculator</a></h2>
+                <p>Calculates new stereotaxic coordinates after tilting the arm or the sample by a given angle, with an interactive plot of the transformation.</p>
+                <a class="mm-btn" href="./coordinate_angle_calculator/">Open tool →</a>
+            </article>
+
+            <article class="mm-card tool">
+                <h2><a href="./plate_layout_generator/">Plate Layout Generator</a></h2>
+                <p>Turns an Excel plate sheet into a printable layout. Reads well labels and cell colours straight from the .xlsx and lays them out as a one-page A4 PDF, for any plate from 6 to 384 wells.</p>
+                <a class="mm-btn" href="./plate_layout_generator/">Open tool →</a>
+            </article>
+
+            <article class="mm-card tool">
+                <h2><a href="./noise_generator/">Noise Generator</a></h2>
+                <p>Generates customizable noise across multiple frequency bands, with presets, precise volume control and a timer — for sleep and focus.</p>
+                <a class="mm-btn" href="./noise_generator/">Open tool →</a>
+            </article>
+
+            <!-- Add more tools here as you create them -->
+        </div>
+    </main>
+
+    <footer class="mm-footer">
+        <div class="mm-wrap">
+            <span>© Mathias Mahn · Mahn Research Group, FMI Basel</span>
+            <span><a href="https://github.com/MathiasMahn/utilities">Source on GitHub</a> · <a href="https://mathiasmahn.org/">mathiasmahn.org</a></span>
+        </div>
+    </footer>
 </body>
 </html>

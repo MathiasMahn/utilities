@@ -3,124 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brain Tissue Light Scattering Simulator</title>
+    <title>Brain Tissue Light Scattering Simulator · Mahn Research Group</title>
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../assets/mahn.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
         .container {
-            max-width: 1400px;
+            max-width: var(--mm-wrap);
             margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+            padding: 1.5rem var(--mm-gutter) 3rem;
         }
 
         .main-grid {
             display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 340px minmax(0, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            align-items: start;
         }
 
-        .controls {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            height: fit-content;
+        .controls,
+        .visualization,
+        .info-section {
+            background: var(--mm-paper);
+            border: 1px solid var(--mm-line);
+            border-radius: var(--mm-radius);
         }
 
-        .control-group {
-            margin-bottom: 25px;
-        }
+        .controls { padding: 1.25rem; }
+
+        .control-group { margin-bottom: 1.4rem; }
 
         .control-group h3 {
-            color: #2a5298;
-            margin-bottom: 15px;
-            font-size: 1.1em;
+            font-family: var(--mm-font-display);
+            font-weight: 600;
+            color: var(--mm-ink);
+            margin: 0 0 0.75rem;
+            font-size: 1.1rem;
         }
 
-        .input-group {
-            margin-bottom: 15px;
-        }
+        .input-group { margin-bottom: 0.8rem; }
 
         .input-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             font-weight: 500;
+            font-size: 0.92rem;
         }
 
         .input-group input {
             width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            padding: 7px 11px;
+            font-size: 0.95rem;
         }
 
-        .input-group input:focus {
-            outline: none;
-            border-color: #2a5298;
-        }
+        .unit { font-size: 0.85em; color: var(--mm-ink-faint); margin-left: 4px; }
 
-        .unit {
-            font-size: 0.9em;
-            color: #666;
-            margin-left: 5px;
-        }
-
-        .visualization {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
+        .visualization { overflow: hidden; }
 
         .viz-header {
-            background: linear-gradient(90deg, #2a5298, #1e3c72);
-            color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 1rem 1.25rem 0.5rem;
+            border-bottom: 1px solid var(--mm-line);
         }
+        .viz-header h2 {
+            margin: 0 0 0.2rem;
+            font-family: var(--mm-font-display);
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+        .viz-header p { margin: 0 0 0.5rem; color: var(--mm-ink-soft); font-size: 0.92rem; }
 
-        .viz-content {
-            padding: 20px;
-        }
+        .viz-content { padding: 1.25rem; }
 
-        .canvas-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
+        .canvas-container { position: relative; margin-bottom: 1rem; }
 
         #heatmapCanvas {
-            border: 1px solid #ddd;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--mm-line);
             border-radius: 8px;
             display: block;
             margin: 0 auto;
@@ -129,86 +88,93 @@
         .results {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            gap: 1rem;
         }
 
         .result-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #2a5298;
+            background: var(--mm-paper);
+            border: 1px solid var(--mm-line);
+            border-left: 4px solid var(--mm-accent);
+            padding: 0.9rem 1rem;
+            border-radius: 8px;
         }
 
         .result-card h4 {
-            color: #2a5298;
-            margin-bottom: 8px;
+            color: var(--mm-ink-soft);
+            margin: 0 0 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
         }
 
         .result-value {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #333;
+            font-size: 1.35em;
+            font-weight: 700;
+            color: var(--mm-accent-strong);
+            font-variant-numeric: tabular-nums;
         }
 
         .simulate-btn {
-            background: linear-gradient(45deg, #2a5298, #1e3c72);
+            width: 100%;
+            padding: 0.7rem 1.5rem;
+            background: var(--mm-accent);
             color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 16px;
+            border: 1px solid var(--mm-accent);
+            border-radius: 999px;
+            font: inherit;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
         }
+        .simulate-btn:hover { background: var(--mm-accent-strong); }
 
-        .simulate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.4);
-        }
-
-        .info-section {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-top: 30px;
-        }
+        .info-section { padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
+        .info-section h2, .info-section h3 { font-family: var(--mm-font-display); font-weight: 600; }
 
         .colorbar {
             display: flex;
-            height: 20px;
-            margin: 10px 0;
-            border-radius: 10px;
+            height: 16px;
+            margin: 10px 0 4px;
+            border-radius: 8px;
             overflow: hidden;
         }
 
         .colorbar-label {
             display: flex;
             justify-content: space-between;
-            font-size: 0.9em;
-            color: #666;
+            font-size: 0.85rem;
+            color: var(--mm-ink-soft);
         }
 
         @media (max-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
+            .main-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+<header class="mm-header">
+    <div class="mm-wrap mm-bar">
+        <a class="mm-brand" href="https://mathiasmahn.org/">
+            <img src="../assets/logo-mark.png" alt="" width="30" height="38">
+            <span class="mm-brand-text"><span class="mm-brand-name">Mahn Research Group</span><span class="mm-brand-sub">FMI Basel</span></span>
+        </a>
+        <nav class="mm-nav" aria-label="Main">
+            <a href="../">All utilities</a>
+            <a href="https://mathiasmahn.org/">mathiasmahn.org</a>
+        </nav>
+    </div>
+</header>
+
+<section class="mm-hero">
+    <div class="mm-wrap">
+        <p class="mm-eyebrow">Utilities</p>
+        <h1>Brain Tissue Light Scattering Simulator</h1>
+        <p class="mm-lead">An interactive implementation of the beam spread function method: estimate how light from an optical fiber spreads and decays in brain tissue for optogenetics.</p>
+    </div>
+</section>
+
     <div class="container">
-        <div class="header">
-            <h1>Brain Tissue Light Scattering Simulator</h1>
-            <p>Interactive implementation of the Beam Spread Function method for optogenetic applications</p>
-        </div>
 
         <div class="main-grid">
             <div class="controls">
@@ -314,6 +280,14 @@
             </ul>
         </div>
     </div>
+
+<footer class="mm-footer">
+    <div class="mm-wrap">
+        <span>© Mathias Mahn · Mahn Research Group, FMI Basel</span>
+        <span><a href="https://github.com/MathiasMahn/utilities">Source on GitHub</a> · <a href="https://mathiasmahn.org/">mathiasmahn.org</a></span>
+    </div>
+</footer>
+
 
     <script>
         // BSF simulation parameters

@@ -1,0 +1,158 @@
+/* Shared look of the utilities, matching mathiasmahn.org.
+   Every page links this file first; its own <style> block then only adds tool-specific layout. */
+
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Source Serif 4 Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url('fonts/source-serif-4-latin-wght-normal.woff2') format('woff2-variations');
+}
+
+:root {
+  --mm-ink: #16202b;
+  --mm-ink-soft: #4a5866;
+  --mm-ink-faint: #7b8794;
+  --mm-paper: #ffffff;
+  --mm-paper-alt: #f5f7f9;
+  --mm-line: #e1e6eb;
+  --mm-accent: #2b86c5;
+  --mm-accent-strong: #1c6aa1;
+  --mm-accent-wash: #e8f2fa;
+  --mm-signal: #d4271c;
+  --mm-good: #2e7d4f;
+  --mm-good-wash: #e7f4ec;
+  --mm-warn: #9a6400;
+  --mm-warn-wash: #fff4d6;
+  --mm-bad-wash: #fbeceb;
+
+  --mm-font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mm-font-display: 'Source Serif 4 Variable', Georgia, 'Times New Roman', serif;
+  --mm-font-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+
+  --mm-wrap: 76rem;
+  --mm-gutter: clamp(1rem, 4vw, 2rem);
+  --mm-radius: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--mm-paper);
+  color: var(--mm-ink);
+  font-family: var(--mm-font-body);
+  font-size: 1rem;
+  line-height: 1.55;
+  /* keep the footer at the bottom on short pages */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+body > * { flex-shrink: 0; }
+.mm-footer { margin-top: auto; }
+
+a { color: var(--mm-accent-strong); text-underline-offset: 0.18em; }
+a:hover { color: var(--mm-ink); }
+:focus-visible { outline: 2px solid var(--mm-accent); outline-offset: 2px; }
+
+.mm-wrap { width: 100%; max-width: var(--mm-wrap); margin-inline: auto; padding-inline: var(--mm-gutter); }
+
+/* ---------- site bar ---------- */
+.mm-header { background: var(--mm-paper); border-bottom: 1px solid var(--mm-line); }
+.mm-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 4rem; flex-wrap: wrap; }
+.mm-brand { display: flex; align-items: center; gap: 0.7rem; color: var(--mm-ink); text-decoration: none; }
+.mm-brand img { height: 2.3rem; width: auto; display: block; }
+.mm-brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.mm-brand-name { font-family: var(--mm-font-display); font-weight: 600; font-size: 1.08rem; }
+.mm-brand-sub { font-size: 0.75rem; color: var(--mm-ink-faint); letter-spacing: 0.04em; }
+.mm-nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.mm-nav a {
+  padding: 0.4rem 0.7rem; border-radius: 6px;
+  color: var(--mm-ink-soft); text-decoration: none; font-size: 0.93rem; font-weight: 500;
+}
+.mm-nav a:hover { background: var(--mm-paper-alt); color: var(--mm-ink); }
+.mm-nav a[aria-current='page'] { background: var(--mm-accent-wash); color: var(--mm-accent-strong); }
+
+/* ---------- page heading ---------- */
+.mm-hero {
+  padding-block: clamp(1.75rem, 4vw, 2.75rem) clamp(1.25rem, 3vw, 1.75rem);
+  background: linear-gradient(180deg, var(--mm-accent-wash) 0%, var(--mm-paper) 100%);
+}
+.mm-eyebrow {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--mm-accent-strong);
+}
+.mm-hero h1 {
+  margin: 0 0 0.4rem;
+  font-family: var(--mm-font-display); font-weight: 600; letter-spacing: -0.01em; line-height: 1.15;
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  color: var(--mm-ink);
+}
+.mm-lead { margin: 0; max-width: 46rem; font-size: 1.08rem; color: var(--mm-ink-soft); }
+
+.mm-main { padding-block: 1.5rem 3rem; }
+
+/* ---------- shared components ---------- */
+.mm-card {
+  background: var(--mm-paper);
+  border: 1px solid var(--mm-line);
+  border-radius: var(--mm-radius);
+  padding: 1.25rem 1.35rem;
+}
+.mm-section-title {
+  font-family: var(--mm-font-display); font-weight: 600; font-size: 1.25rem;
+  margin: 0 0 0.75rem; color: var(--mm-ink);
+}
+
+.mm-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border: 1px solid var(--mm-accent); border-radius: 999px;
+  background: var(--mm-paper); color: var(--mm-accent-strong);
+  font: inherit; font-size: 0.95rem; font-weight: 500;
+  text-decoration: none; cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.mm-btn:hover { background: var(--mm-accent); color: #fff; }
+.mm-btn--primary { background: var(--mm-accent); color: #fff; }
+.mm-btn--primary:hover { background: var(--mm-accent-strong); border-color: var(--mm-accent-strong); }
+.mm-btn:disabled { opacity: 0.45; cursor: default; background: var(--mm-paper); color: var(--mm-ink-faint); border-color: var(--mm-line); }
+
+/* form fields */
+.mm-field, input[type='number'], input[type='text'], select, textarea {
+  font: inherit;
+  color: var(--mm-ink);
+  background: var(--mm-paper);
+  border: 1px solid #cfd7df;
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+input[type='number']:focus, input[type='text']:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--mm-accent);
+  box-shadow: 0 0 0 3px rgba(43, 134, 197, 0.15);
+}
+input[type='checkbox'], input[type='radio'], input[type='range'] { accent-color: var(--mm-accent); }
+
+/* ---------- footer ---------- */
+.mm-footer { background: #101820; color: #8b98a5; font-size: 0.87rem; }
+.mm-footer .mm-wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; padding-block: 1.25rem; }
+.mm-footer a { color: #e9f1f7; }
+.mm-footer a:hover { color: #9ccbec; }
+
+/* Page chrome never goes onto paper */
+@media print {
+  .mm-header, .mm-hero, .mm-footer { display: none !important; }
+  body { display: block; min-height: 0; }
+}
