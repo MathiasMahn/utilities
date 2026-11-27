@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brain Tissue Light Scattering Simulator · Mahn Research Group</title>
+    <title>Light Spread in Brain Tissue · Mahn Research Group</title>
+    <meta name="description" content="Estimate the irradiance around an optical fiber in brain tissue with the beam-spread-function model (Yona et al. 2016; McLean et al. 1998).">
     <link rel="icon" type="image/png" href="../assets/favicon.png">
     <link rel="stylesheet" href="../assets/mahn.css">
     <style>
@@ -15,141 +16,121 @@
 
         .main-grid {
             display: grid;
-            grid-template-columns: 340px minmax(0, 1fr);
+            grid-template-columns: 330px minmax(0, 1fr);
             gap: 1.5rem;
-            margin-bottom: 1.5rem;
             align-items: start;
         }
+        @media (max-width: 860px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
 
-        .controls,
-        .visualization,
-        .info-section {
+        .panel {
             background: var(--mm-paper);
             border: 1px solid var(--mm-line);
             border-radius: var(--mm-radius);
         }
 
-        .controls { padding: 1.25rem; }
-
-        .control-group { margin-bottom: 1.4rem; }
-
+        .controls { padding: 1.1rem 1.25rem; }
+        .control-group { margin-bottom: 1.25rem; }
+        .control-group:last-of-type { margin-bottom: 0.75rem; }
         .control-group h3 {
             font-family: var(--mm-font-display);
             font-weight: 600;
             color: var(--mm-ink);
-            margin: 0 0 0.75rem;
-            font-size: 1.1rem;
+            margin: 0 0 0.6rem;
+            font-size: 1.05rem;
         }
-
-        .input-group { margin-bottom: 0.8rem; }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 500;
-            font-size: 0.92rem;
+        .input-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 6.5rem;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.45rem;
         }
-
-        .input-group input {
-            width: 100%;
-            padding: 7px 11px;
-            font-size: 0.95rem;
+        .input-row label { font-size: 0.9rem; color: var(--mm-ink); }
+        .input-row input, .input-row select { width: 100%; padding: 5px 8px; font-size: 0.92rem; }
+        .input-row select { grid-column: 1 / -1; }
+        .unit { font-size: 0.82em; color: var(--mm-ink-faint); margin-left: 3px; }
+        input:disabled { background: var(--mm-paper-alt); color: var(--mm-ink-soft); }
+        .derived {
+            margin: 0.35rem 0 0;
+            padding: 0.55rem 0.7rem;
+            background: var(--mm-paper-alt);
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: var(--mm-ink-soft);
+            line-height: 1.5;
         }
+        .derived b { color: var(--mm-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+        .reset-btn { width: 100%; }
 
-        .unit { font-size: 0.85em; color: var(--mm-ink-faint); margin-left: 4px; }
-
-        .visualization { overflow: hidden; }
-
+        .viz { overflow: hidden; }
         .viz-header {
-            padding: 1rem 1.25rem 0.5rem;
+            padding: 1rem 1.25rem 0.75rem;
             border-bottom: 1px solid var(--mm-line);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.5rem 1rem;
         }
-        .viz-header h2 {
-            margin: 0 0 0.2rem;
-            font-family: var(--mm-font-display);
-            font-weight: 600;
-            font-size: 1.25rem;
-        }
-        .viz-header p { margin: 0 0 0.5rem; color: var(--mm-ink-soft); font-size: 0.92rem; }
+        .viz-header h2 { margin: 0; font-family: var(--mm-font-display); font-weight: 600; font-size: 1.2rem; }
+        .viz-header p { margin: 0; color: var(--mm-ink-soft); font-size: 0.88rem; }
+        .viz-content { padding: 1rem 1.25rem 1.25rem; position: relative; }
+        #map { display: block; width: 100%; height: auto; cursor: crosshair; }
 
-        .viz-content { padding: 1.25rem; }
+        .colorbar-wrap { margin-top: 0.6rem; }
+        #colorbar { display: block; width: 100%; height: 14px; border-radius: 3px; }
+        .colorbar-ticks { position: relative; height: 1.2rem; font-size: 0.78rem; color: var(--mm-ink-soft); font-variant-numeric: tabular-nums; }
+        .colorbar-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+        .colorbar-title { font-size: 0.8rem; color: var(--mm-ink-faint); text-align: center; margin-top: 0.15rem; }
 
-        .canvas-container { position: relative; margin-bottom: 1rem; }
-
-        #heatmapCanvas {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid var(--mm-line);
-            border-radius: 8px;
-            display: block;
-            margin: 0 auto;
+        .tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: var(--mm-ink);
+            color: #fff;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            padding: 0.4rem 0.55rem;
+            border-radius: 6px;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+            transform: translate(12px, -50%);
+            display: none;
+            z-index: 2;
         }
 
         .results {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
             gap: 1rem;
+            margin-top: 1.5rem;
         }
-
         .result-card {
             background: var(--mm-paper);
             border: 1px solid var(--mm-line);
             border-left: 4px solid var(--mm-accent);
-            padding: 0.9rem 1rem;
+            padding: 0.8rem 1rem;
             border-radius: 8px;
         }
-
         .result-card h4 {
             color: var(--mm-ink-soft);
-            margin: 0 0 6px;
-            font-size: 0.85rem;
+            margin: 0 0 4px;
+            font-size: 0.78rem;
             font-weight: 600;
             letter-spacing: 0.04em;
             text-transform: uppercase;
         }
-
-        .result-value {
-            font-size: 1.35em;
-            font-weight: 700;
-            color: var(--mm-accent-strong);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .simulate-btn {
-            width: 100%;
-            padding: 0.7rem 1.5rem;
-            background: var(--mm-accent);
-            color: white;
-            border: 1px solid var(--mm-accent);
-            border-radius: 999px;
-            font: inherit;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .simulate-btn:hover { background: var(--mm-accent-strong); }
+        .result-value { font-size: 1.3em; font-weight: 700; color: var(--mm-ink); font-variant-numeric: tabular-nums; }
+        .result-note { font-size: 0.8rem; color: var(--mm-ink-faint); }
 
         .info-section { padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
-        .info-section h2, .info-section h3 { font-family: var(--mm-font-display); font-weight: 600; }
-
-        .colorbar {
-            display: flex;
-            height: 16px;
-            margin: 10px 0 4px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .colorbar-label {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: var(--mm-ink-soft);
-        }
-
-        @media (max-width: 768px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
+        .info-section h2 { font-family: var(--mm-font-display); font-weight: 600; font-size: 1.25rem; margin: 0 0 0.6rem; }
+        .info-section h3 { font-family: var(--mm-font-display); font-weight: 600; font-size: 1.05rem; margin: 1.2rem 0 0.4rem; }
+        .info-section p, .info-section li { color: var(--mm-ink-soft); font-size: 0.95rem; }
+        .info-section ul { padding-left: 1.2rem; }
+        .info-section .refs li { margin-bottom: 0.35rem; }
     </style>
 </head>
 <body>
@@ -169,117 +150,103 @@
 <section class="mm-hero">
     <div class="mm-wrap">
         <p class="mm-eyebrow">Utilities</p>
-        <h1>Brain Tissue Light Scattering Simulator</h1>
-        <p class="mm-lead">An interactive implementation of the beam spread function method: estimate how light from an optical fiber spreads and decays in brain tissue for optogenetics.</p>
+        <h1>Light Spread in Brain Tissue</h1>
+        <p class="mm-lead">Estimate the irradiance around an optical fiber in brain tissue for optogenetics, using the beam-spread-function model of Yona et al. (2016). Tissue optics follow Mahn, Klavir &amp; Yizhar (2020).</p>
     </div>
 </section>
 
-    <div class="container">
-
-        <div class="main-grid">
-            <div class="controls">
-                <div class="control-group">
-                    <h3>Optical Fiber Parameters</h3>
-                    <div class="input-group">
-                        <label for="fiberDiameter">Fiber Diameter <span class="unit">μm</span></label>
-                        <input type="number" id="fiberDiameter" value="200" min="25" max="400">
-                    </div>
-                    <div class="input-group">
-                        <label for="numericalAperture">Numerical Aperture</label>
-                        <input type="number" id="numericalAperture" value="0.37" min="0.1" max="0.5" step="0.01">
-                    </div>
-                    <div class="input-group">
-                        <label for="wavelength">Wavelength <span class="unit">nm</span></label>
-                        <input type="number" id="wavelength" value="473" min="400" max="700">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>Tissue Optical Properties</h3>
-                    <div class="input-group">
-                        <label for="scatteringCoeff">Scattering Coefficient <span class="unit">cm⁻¹</span></label>
-                        <input type="number" id="scatteringCoeff" value="211" min="50" max="300">
-                    </div>
-                    <div class="input-group">
-                        <label for="anisotropyFactor">Anisotropy Factor (g)</label>
-                        <input type="number" id="anisotropyFactor" value="0.86" min="0.7" max="0.95" step="0.01">
-                    </div>
-                    <div class="input-group">
-                        <label for="absorptionCoeff">Absorption Coefficient <span class="unit">cm⁻¹</span></label>
-                        <input type="number" id="absorptionCoeff" value="0.6" min="0.1" max="2" step="0.1">
-                    </div>
-                    <div class="input-group">
-                        <label for="refractiveIndex">Refractive Index</label>
-                        <input type="number" id="refractiveIndex" value="1.36" min="1.3" max="1.4" step="0.01">
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <h3>Simulation Parameters</h3>
-                    <div class="input-group">
-                        <label for="maxDepth">Max Depth <span class="unit">μm</span></label>
-                        <input type="number" id="maxDepth" value="600" min="200" max="1000">
-                    </div>
-                    <div class="input-group">
-                        <label for="resolution">Resolution <span class="unit">μm</span></label>
-                        <input type="number" id="resolution" value="5" min="1" max="10">
-                    </div>
-                </div>
-
-                <button class="simulate-btn" onclick="runSimulation()">Run Simulation</button>
+<div class="container">
+    <div class="main-grid">
+        <form class="panel controls" id="controls" onsubmit="return false">
+            <div class="control-group">
+                <h3>Light source</h3>
+                <div class="input-row"><label for="power">Power at fiber tip <span class="unit">mW</span></label><input type="number" id="power" value="5" min="0.01" max="1000" step="0.1"></div>
+                <div class="input-row"><label for="fiberDiameter">Core diameter <span class="unit">µm</span></label><input type="number" id="fiberDiameter" value="200" min="10" max="1000" step="1"></div>
+                <div class="input-row"><label for="numericalAperture">Numerical aperture</label><input type="number" id="numericalAperture" value="0.39" min="0.05" max="1.0" step="0.01"></div>
+                <div class="input-row"><label for="wavelength">Wavelength <span class="unit">nm</span></label><input type="number" id="wavelength" value="470" min="400" max="800" step="1"></div>
             </div>
 
-            <div class="visualization">
+            <div class="control-group">
+                <h3>Tissue</h3>
+                <div class="input-row">
+                    <select id="tissue" aria-label="Tissue preset">
+                        <option value="striatum" selected>Striatum: 2.8% blood volume</option>
+                        <option value="bulb">Olfactory bulb: 5.9% blood volume</option>
+                        <option value="cortexYona">Mouse cortex at 473 nm, fit of Yona et al. 2016</option>
+                        <option value="custom">Custom µs and µa</option>
+                    </select>
+                </div>
+                <div class="input-row"><label for="bloodVolume">Blood volume <span class="unit">%</span></label><input type="number" id="bloodVolume" value="2.8" min="0" max="100" step="0.1"></div>
+                <div class="input-row"><label for="oxygenation">Blood O₂ saturation <span class="unit">%</span></label><input type="number" id="oxygenation" value="62" min="0" max="100" step="1"></div>
+                <div class="input-row"><label for="hbConc">Hemoglobin in blood <span class="unit">g/L</span></label><input type="number" id="hbConc" value="150" min="1" max="400" step="1"></div>
+                <div class="input-row"><label for="anisotropy">Anisotropy g</label><input type="number" id="anisotropy" value="0.8803" min="0.5" max="0.99" step="0.001"></div>
+                <div class="input-row"><label for="scatteringCoeff">Scattering µs <span class="unit">cm⁻¹</span></label><input type="number" id="scatteringCoeff" value="213" min="1" max="2000" step="0.1"></div>
+                <div class="input-row"><label for="absorptionCoeff">Absorption µa <span class="unit">cm⁻¹</span></label><input type="number" id="absorptionCoeff" value="4" min="0" max="500" step="0.01"></div>
+                <div class="input-row"><label for="refractiveIndex">Refractive index</label><input type="number" id="refractiveIndex" value="1.36" min="1.3" max="1.5" step="0.01"></div>
+                <p class="derived" id="derived"></p>
+            </div>
+
+            <div class="control-group">
+                <h3>Display</h3>
+                <div class="input-row"><label for="maxDepth">Depth shown <span class="unit">µm</span></label><input type="number" id="maxDepth" value="1000" min="100" max="3000" step="50"></div>
+                <div class="input-row"><label for="threshold">Target irradiance <span class="unit">mW/mm²</span></label><input type="number" id="threshold" value="1" min="0.001" max="1000" step="0.1"></div>
+            </div>
+
+            <button type="button" class="mm-btn reset-btn" id="reset">Reset to chapter example</button>
+        </form>
+
+        <div>
+            <section class="panel viz" aria-label="Irradiance map">
                 <div class="viz-header">
-                    <h2>Light Distribution Heatmap</h2>
-                    <p>Normalized light intensity in brain tissue</p>
+                    <h2>Irradiance around the fiber tip</h2>
+                    <p id="vizSummary">Side view through the fiber axis, log scale</p>
                 </div>
-                <div class="viz-content">
-                    <div class="canvas-container">
-                        <canvas id="heatmapCanvas" width="600" height="400"></canvas>
-                    </div>
-                    <div class="colorbar" id="colorbar"></div>
-                    <div class="colorbar-label">
-                        <span>0%</span>
-                        <span>Light Intensity</span>
-                        <span>100%</span>
+                <div class="viz-content" id="vizContent">
+                    <canvas id="map" width="760" height="640" role="img" aria-label="Map of irradiance in tissue below the fiber, with contour lines"></canvas>
+                    <div class="tooltip" id="tooltip"></div>
+                    <div class="colorbar-wrap">
+                        <canvas id="colorbar" width="600" height="14" aria-hidden="true"></canvas>
+                        <div class="colorbar-ticks" id="colorbarTicks"></div>
+                        <div class="colorbar-title">Irradiance (mW/mm²)</div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <div class="results" id="results">
-            <div class="result-card">
-                <h4>Mean Free Path</h4>
-                <div class="result-value" id="meanFreePath">-- μm</div>
+            <div class="results" id="results">
+                <div class="result-card"><h4>At the fiber tip</h4><div class="result-value" id="resTip">–</div><div class="result-note">mean over the core</div></div>
+                <div class="result-card"><h4>Target reached to</h4><div class="result-value" id="resThreshold">–</div><div class="result-note" id="resThresholdNote">on the fiber axis</div></div>
+                <div class="result-card"><h4>50% of tip value</h4><div class="result-value" id="res50">–</div><div class="result-note">depth on axis</div></div>
+                <div class="result-card"><h4>10% of tip value</h4><div class="result-value" id="res10">–</div><div class="result-note">depth on axis</div></div>
+                <div class="result-card"><h4>1% of tip value</h4><div class="result-value" id="res1">–</div><div class="result-note">depth on axis</div></div>
             </div>
-            <div class="result-card">
-                <h4>50% Intensity Depth</h4>
-                <div class="result-value" id="depth50">-- μm</div>
-            </div>
-            <div class="result-card">
-                <h4>10% Intensity Depth</h4>
-                <div class="result-value" id="depth10">-- μm</div>
-            </div>
-            <div class="result-card">
-                <h4>1% Intensity Depth</h4>
-                <div class="result-value" id="depth1">-- μm</div>
-            </div>
-        </div>
-
-        <div class="info-section">
-            <h3>About This Simulator</h3>
-            <p>This interactive tool implements the Beam Spread Function (BSF) method described in Yona et al. (2016) for modeling light scattering in brain tissue for optogenetic applications. The BSF method provides a fast analytical approximation for light propagation in highly scattering media, making it ideal for real-time parameter exploration.</p>
-            
-            <h4 style="margin-top: 20px;">Key Features:</h4>
-            <ul style="margin-left: 20px; margin-top: 10px;">
-                <li>Real-time light distribution visualization</li>
-                <li>Adjustable fiber and tissue parameters</li>
-                <li>Based on validated experimental data from mouse cortex</li>
-                <li>Suitable for optogenetic experiment planning</li>
-            </ul>
         </div>
     </div>
+
+    <section class="panel info-section">
+        <h2>About this estimate</h2>
+        <p>The map shows the radiant flux density (irradiance) in a plane through the fiber axis for light leaving a flat-cleaved fiber that touches the tissue. It is computed with the beam-spread-function (BSF) model of McLean et al. (1998), as adapted for optogenetics by Yona et al. (2016): the response to a thin pencil beam, made of unscattered light plus a time-dispersed scattered part, is spread over the fiber's emission cone and over the area of the fiber core.</p>
+        <h3>Tissue optics</h3>
+        <ul>
+            <li>Reduced scattering is estimated from the wavelength as µs′ = 2.37·(λ/500 nm)<sup>−1.15</sup> mm⁻¹ (Liu et al. 2015), with anisotropy g = 0.8803, so µs = µs′/(1 − g).</li>
+            <li>Absorption comes from the blood: hemoglobin spectra compiled by S. Prahl (omlc.org) at the given O₂ saturation and hemoglobin concentration, scaled by the blood volume. Water absorption is negligible below 800 nm and is ignored.</li>
+            <li>The striatum and olfactory-bulb presets are the lowest and highest blood volumes reported in mouse brain (Chugh et al. 2009), as used in Mahn, Klavir &amp; Yizhar (2020), Fig. 11.3.</li>
+        </ul>
+        <h3>Limitations</h3>
+        <ul>
+            <li>This is an analytical approximation for strongly forward-scattering tissue. It treats the emission cone paraxially and ignores light reflected back towards the fiber, so values far from the axis and close to the tip are rough.</li>
+            <li>Real tissue is not homogeneous; blood vessels and fiber tracts change the light distribution. Use the numbers to plan experiments, not as measurements.</li>
+            <li>Opsins respond to light from all directions (fluence rate), which in scattering tissue is higher than the irradiance shown here.</li>
+        </ul>
+        <h3>References</h3>
+        <ul class="refs">
+            <li>Yona G, Meitav N, Kahn I, Shoham S (2016). Realistic numerical and analytical modeling of light scattering in brain tissue for optogenetic applications. <em>eNeuro</em> 3, ENEURO.0059-15.2015. <a href="https://doi.org/10.1523/ENEURO.0059-15.2015">doi.org/10.1523/ENEURO.0059-15.2015</a></li>
+            <li>McLean JW, Freeman JD, Walker RE (1998). Beam spread function with time dispersion. <em>Applied Optics</em> 37, 4701–4711. <a href="https://doi.org/10.1364/AO.37.004701">doi.org/10.1364/AO.37.004701</a></li>
+            <li>Mahn M, Klavir O, Yizhar O (2020). Optogenetic modulation of neural circuits. In: <em>Handbook of Neurophotonics</em>. CRC Press. <a href="https://doi.org/10.1201/9780429194702">doi.org/10.1201/9780429194702</a></li>
+            <li>Liu Y, Jacques SL, Azimipour M, et al. (2015). OptogenSIM: a 3D Monte Carlo simulation platform for light delivery design in optogenetics. <em>Biomedical Optics Express</em> 6, 4859–4870. <a href="https://doi.org/10.1364/BOE.6.004859">doi.org/10.1364/BOE.6.004859</a></li>
+            <li>Prahl S. Optical absorption of hemoglobin. <a href="https://omlc.org/spectra/hemoglobin/">omlc.org/spectra/hemoglobin</a></li>
+        </ul>
+    </section>
+</div>
 
 <footer class="mm-footer">
     <div class="mm-wrap">
@@ -288,278 +255,457 @@
     </div>
 </footer>
 
+<script>
+// ---------------------------------------------------------------------------
+// Molar extinction coefficients of oxy- and deoxyhemoglobin, 300–800 nm in 2 nm
+// steps, in cm⁻¹/M (S. Prahl, omlc.org/spectra/hemoglobin/summary.html).
+// ---------------------------------------------------------------------------
+const HB = {start: 300, step: 2,
+  hbo2: [65972,63208,61952,62352,62856,63352,65972,69016,72404,75536,78752,82256,85972,89796,93768,97512,100964,103504,104968,106452,107884,109060,110092,109032,107984,106576,105040,103696,101568,97828,94744,92248,89836,88484,87512,88176,91592,95140,98936,103432,109564,116968,125420,135132,148100,167748,189740,212060,231612,248404,266232,284224,308716,354208,422320,466840,500200,524280,521880,515520,480360,431880,376236,326032,283112,246072,214120,165332,132820,119140,102580,92780,81444,76324,67044,62816,58864,53552,49496,47496,44480,41320,39807.2,37073.2,34870.8,33209.2,31620,30113.6,28850.8,27718,26629.2,25701.6,25180.4,24669.6,24174.8,23684.4,23086.8,22457.6,21850.4,21260,20932.8,20596.4,20418,19946,19996,20035.2,20150.4,20429.2,21001.6,22509.6,24202.4,26450.4,29269.2,32496.4,35990,39956.8,43876,46924,49752,51712,53236,53292,52096,49868,46660,43016,39675.2,36815.2,34476.8,33456,32613.2,32620,33915.6,36495.2,40172,44496,49172,53308,55540,54728,50104,43304,34639.6,26600.4,19763.2,14400.8,10468.4,7678.8,5683.6,4504.4,3200,2664,2128,1789.2,1647.6,1506,1364.4,1222.8,1110,1026,942,858,774,707.6,658.8,610,561.2,512.4,478.8,460.4,442,423.6,405.2,390.4,379.2,368,356.8,345.6,335.2,325.6,319.6,314,308.4,302.8,298,294,290,285.6,282,279.2,277.6,276,274.4,272.8,274.4,276,277.6,279.2,282,286,290,294,298,302.8,308.4,314,319.6,325.2,332,340,348,356,364,372.4,381.2,390,398.8,407.6,418.8,432.4,446,459.6,473.2,487.6,502.8,518,533.2,548.4,562,574,586,598,610,622.8,636.4,650,663.6,677.2,689.2,699.6,710,720.4,730.8,740,748,756,764,772,786.4,807.2,816],
+  hb: [64440,61300,58828,56908,57620,59156,62248,65344,68312,71208,74508,78284,82060,85592,88516,90856,93192,95532,99792,104476,108472,110996,113524,116052,118752,122092,125436,128776,132120,133632,134940,136044,136972,137900,138856,139968,141084,142196,143312,144424,145232,145232,148668,153908,159544,167780,180004,191540,202124,212712,223296,236188,253368,270548,287356,303956,321344,342596,363848,385680,407560,429880,461200,481840,500840,528600,552160,552160,547040,501560,413280,363240,282724,237224,173320,103292,62640,36170,30698.8,25886.4,23388.8,20891.2,19260.8,18142.4,17025.6,16156.4,15310,15048.4,14792.8,14657.2,14550,14881.2,15212.4,15543.6,15898,16684,17469.6,18255.6,19041.2,19891.2,20862,21832.8,22803.6,23774.4,24745.2,25773.6,26936.8,28100,29263.2,30426.4,31589.6,32851.2,34397.6,35944,37490,39036.4,40584,42088,43592,45092,46592,48148,49708,51268,52496,53412,54080,54520,54540,54164,53788,52276,50572,48828,46948,45072,43340,41716,40092,38467.6,37020,35676.4,34332.8,32851.6,31075.2,28324.4,25470,22574.8,19800,17058.4,14677.2,13622.4,12567.6,11513.2,10477.6,9443.6,8591.2,7762,7344.8,6927.2,6509.6,6193.2,5906.8,5620,5366.8,5148.8,4930.8,4730.8,4602.4,4473.6,4345.2,4216.8,4088.4,3965.08,3857.6,3750.12,3642.64,3535.16,3427.68,3320.2,3226.56,3140.28,3053.96,2967.68,2881.4,2795.12,2708.84,2627.64,2554.4,2481.16,2407.92,2334.68,2261.48,2188.24,2115,2051.96,2000.48,1949.04,1897.56,1846.08,1794.28,1741,1687.76,1634.48,1583.52,1540.48,1497.4,1454.36,1411.32,1368.28,1325.88,1285.16,1244.44,1203.68,1152.8,1102.2,1102.2,1102.2,1101.76,1100.48,1115.88,1161.64,1207.4,1266.04,1333.24,1405.24,1515.32,1541.76,1560.48,1560.48,1548.52,1508.44,1459.56,1410.52,1361.32,1311.88,1262.44,1213,1163.56,1114.8,1075.44,1036.08,996.72,957.36,921.8,890.8,859.8,828.8,802.96,782.36,761.72]};
 
-    <script>
-        // BSF simulation parameters
-        let simulationData = null;
+// ---------------------------------------------------------------------------
+// Tissue optics
+// ---------------------------------------------------------------------------
+const PRESETS = {
+    striatum:   { bloodVolume: 2.8, oxygenation: 62, hbConc: 150, anisotropy: 0.8803 },
+    bulb:       { bloodVolume: 5.9, oxygenation: 62, hbConc: 150, anisotropy: 0.8803 },
+    cortexYona: { scatteringCoeff: 211, absorptionCoeff: 0.6, anisotropy: 0.86, wavelength: 473 },
+};
+const CHAPTER_EXAMPLE = { power: 5, fiberDiameter: 200, numericalAperture: 0.39, wavelength: 470, tissue: 'striatum',
+    refractiveIndex: 1.36, maxDepth: 1000, threshold: 1, ...PRESETS.striatum };
 
-        // Initialize colorbar
-        function initializeColorbar() {
-            const colorbar = document.getElementById('colorbar');
-            const colors = generateColorMap(100);
-            
-            colors.forEach(color => {
-                const segment = document.createElement('div');
-                segment.style.backgroundColor = color;
-                segment.style.flex = '1';
-                colorbar.appendChild(segment);
-            });
+function interp(arr, lambda) {
+    const x = Math.min(Math.max((lambda - HB.start) / HB.step, 0), arr.length - 1);
+    const i = Math.min(Math.floor(x), arr.length - 2), f = x - i;
+    return arr[i] * (1 - f) + arr[i + 1] * f;
+}
+
+// absorption coefficient of whole blood, cm⁻¹
+function bloodAbsorption(lambda, saturation, hbGramsPerLiter) {
+    const eps = saturation * interp(HB.hbo2, lambda) + (1 - saturation) * interp(HB.hb, lambda);
+    return 2.303 * eps * hbGramsPerLiter / 64500;
+}
+
+// reduced scattering of brain tissue (Liu et al. 2015), cm⁻¹
+function reducedScattering(lambda) {
+    return 23.7 * Math.pow(lambda / 500, -1.15);
+}
+
+// ---------------------------------------------------------------------------
+// Bessel functions (Numerical Recipes rational approximations)
+// ---------------------------------------------------------------------------
+function besselJ0(x) {
+    const ax = Math.abs(x);
+    if (ax < 8.0) {
+        const y = x * x;
+        const a1 = 57568490574.0 + y * (-13362590354.0 + y * (651619640.7 + y * (-11214424.18 + y * (77392.33017 + y * (-184.9052456)))));
+        const a2 = 57568490411.0 + y * (1029532985.0 + y * (9494680.718 + y * (59272.64853 + y * (267.8532712 + y))));
+        return a1 / a2;
+    }
+    const z = 8.0 / ax, y = z * z, xx = ax - 0.785398164;
+    const p = 1.0 + y * (-0.1098628627e-2 + y * (0.2734510407e-4 + y * (-0.2073370639e-5 + y * 0.2093887211e-6)));
+    const q = -0.1562499995e-1 + y * (0.1430488765e-3 + y * (-0.6911147651e-5 + y * (0.7621095161e-6 - y * 0.934935152e-7)));
+    return Math.sqrt(0.636619772 / ax) * (Math.cos(xx) * p - z * Math.sin(xx) * q);
+}
+function besselJ1(x) {
+    const ax = Math.abs(x);
+    if (ax < 8.0) {
+        const y = x * x;
+        const a1 = x * (72362614232.0 + y * (-7895059235.0 + y * (242396853.1 + y * (-2972611.439 + y * (15704.48260 + y * (-30.16036606))))));
+        const a2 = 144725228442.0 + y * (2300535178.0 + y * (18583304.74 + y * (99447.43394 + y * (376.9991397 + y))));
+        return a1 / a2;
+    }
+    const z = 8.0 / ax, y = z * z, xx = ax - 2.356194491;
+    const p = 1.0 + y * (0.183105e-2 + y * (-0.3516396496e-4 + y * (0.2457520174e-5 + y * (-0.240337019e-6))));
+    const q = 0.04687499995 + y * (-0.2002690873e-3 + y * (0.8449199096e-5 + y * (-0.88228987e-6 + y * 0.105787412e-6)));
+    const ans = Math.sqrt(0.636619772 / ax) * (Math.cos(xx) * p - z * Math.sin(xx) * q);
+    return x < 0 ? -ans : ans;
+}
+// 2D Fourier transform of a uniform disk of radius R with unit area integral
+function diskFT(k, R) {
+    const x = k * R;
+    return x < 1e-6 ? 1 : 2 * besselJ1(x) / x;
+}
+
+// ---------------------------------------------------------------------------
+// Beam spread function
+// McLean et al. 1998, Eqs. (4) and (5): mean and variance of the multipath time,
+// written here as excess path length T = c·τ (µm), for a Henyey–Greenstein
+// phase function (<cos θ> = g, <cos² θ> = (1 + 2g²)/3).
+// ---------------------------------------------------------------------------
+function pathMoments(z, mus, g) {
+    const v = 1 - g, w = 1.5 * (1 - (1 + 2 * g * g) / 3);
+    const bz = mus * z, x = bz * v, y = bz * w;
+    const f = x < 1e-6 ? 1 - x / 2 : -Math.expm1(-x) / x;           // (1 − e^−x)/x
+    const ex = x < 1e-4 ? x * x / 2 - x ** 3 / 6 : Math.expm1(-x) + x; // e^−x − 1 + x
+    const ey = y < 1e-4 ? y * y / 2 - y ** 3 / 6 : Math.expm1(-y) + y;
+    const meanRel = 1 - f;
+    const varRel = (2 / 3) * ((w * w - 3 * w * v) * ex + 2 * v * v * ey) / (bz * bz * w * v * v * (w - v)) - f * f;
+    const mean = meanRel * z, variance = Math.max(varRel, 1e-12) * z * z;
+    return { shape: mean * mean / variance, scale: variance / mean };
+}
+
+// Irradiance E(r, z) in mW/mm² on a grid (r: 0…halfWidth, z: 0…maxDepth).
+// Pencil-beam BSF (Yona et al. 2016, Eqs. 1–4) in the 2D Fourier domain: the
+// spatial Gaussian h has transform exp(−k²Tz/3), so integrating over the Gamma
+// distribution of T gives (1 + θ(µa + k²z/3))^−α. The emission cone (paraxial,
+// half-angle asin(NA/n)) and the fiber core are uniform disks; all three are
+// multiplied and transformed back with a Hankel transform.
+function simulate(p, nz, nr) {
+    const a = p.fiberDiameter / 2;
+    const mus = p.mus * 1e-4, mua = p.mua * 1e-4;   // cm⁻¹ → µm⁻¹
+    const tanDiv = Math.tan(Math.asin(Math.min(p.NA / p.n, 0.999)));
+    const span = Math.max(p.maxDepth, p.halfWidth) * 6;
+    const dk = 2 * Math.PI / span;
+    const kTaper = 0.6;                    // smooths structure below ~2 µm
+    const nk = Math.ceil(3.2 * kTaper / dk);
+    const ks = new Float64Array(nk), wk = new Float64Array(nk), fiberFT = new Float64Array(nk);
+    for (let i = 0; i < nk; i++) {
+        const k = (i + 0.5) * dk;
+        ks[i] = k;
+        wk[i] = Math.exp(-((k / kTaper) ** 2)) * k * dk;
+        fiberFT[i] = diskFT(k, a);
+    }
+    const rs = new Float64Array(nr), zs = new Float64Array(nz);
+    for (let j = 0; j < nr; j++) rs[j] = j / (nr - 1) * p.halfWidth;
+    for (let i = 0; i < nz; i++) zs[i] = i / (nz - 1) * p.maxDepth;
+    const J0 = new Float64Array(nr * nk);
+    for (let j = 0; j < nr; j++) for (let i = 0; i < nk; i++) J0[j * nk + i] = besselJ0(ks[i] * rs[j]);
+
+    const E = new Float64Array(nz * nr), F = new Float64Array(nk);
+    const toMm2 = 1e6 / (2 * Math.PI);
+    for (let iz = 0; iz < nz; iz++) {
+        const z = Math.max(zs[iz], 1e-3);
+        const { shape, scale } = pathMoments(z, mus, p.g);
+        const unscattered = Math.exp(-mus * z);
+        const scattered = -Math.expm1(-mus * z);
+        const attenuation = Math.exp(-mua * z);
+        const R = z * tanDiv;
+        for (let i = 0; i < nk; i++) {
+            const k = ks[i];
+            const sc = scattered * Math.pow(1 + scale * (mua + k * k * z / 3), -shape);
+            F[i] = attenuation * (unscattered + sc) * fiberFT[i] * diskFT(k, R) * wk[i];
         }
-
-        // Generate color map (from blue to red via green/yellow)
-        function generateColorMap(steps) {
-            console.log('generateColorMap called with steps:', steps);
-            const colors = [];
-            for (let i = 0; i < steps; i++) {
-                const ratio = i / (steps - 1);
-                let r, g, b;
-                
-                if (ratio < 0.25) {
-                    // Blue to cyan
-                    const t = ratio / 0.25;
-                    r = 0;
-                    g = Math.floor(255 * t);
-                    b = 255;
-                } else if (ratio < 0.5) {
-                    // Cyan to green
-                    const t = (ratio - 0.25) / 0.25;
-                    r = 0;
-                    g = 255;
-                    b = Math.floor(255 * (1 - t));
-                } else if (ratio < 0.75) {
-                    // Green to yellow
-                    const t = (ratio - 0.5) / 0.25;
-                    r = Math.floor(255 * t);
-                    g = 255;
-                    b = 0;
-                } else {
-                    // Yellow to red
-                    const t = (ratio - 0.75) / 0.25;
-                    r = 255;
-                    g = Math.floor(255 * (1 - t));
-                    b = 0;
-                }
-                
-                colors.push(`rgb(${r},${g},${b})`);
-            }
-            console.log('Generated', colors.length, 'colors');
-            return colors;
+        for (let j = 0; j < nr; j++) {
+            let s = 0;
+            const off = j * nk;
+            for (let i = 0; i < nk; i++) s += F[i] * J0[off + i];
+            E[iz * nr + j] = Math.max(0, p.power * s * toMm2);
         }
+    }
+    return { E, rs, zs, nz, nr };
+}
 
-        // BSF calculation functions
-        function gamma(x) {
-            // Stirling's approximation for gamma function
-            if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
-            return Math.sqrt(2 * Math.PI / x) * Math.pow(x / Math.E, x);
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+const RAMP = ['#f7fbff', '#d6e8f6', '#a9cfec', '#6fb0de', '#3b8fcd', '#1c6aa1', '#0f4673', '#082b48'];
+function hexToRgb(h) { return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); }
+const RAMP_RGB = RAMP.map(hexToRgb);
+function rampColor(t) {
+    t = Math.min(Math.max(t, 0), 1) * (RAMP_RGB.length - 1);
+    const i = Math.min(Math.floor(t), RAMP_RGB.length - 2), f = t - i;
+    return RAMP_RGB[i].map((c, k) => Math.round(c + (RAMP_RGB[i + 1][k] - c) * f));
+}
+
+const LEVELS = [1000, 100, 10, 1, 0.1, 0.01];
+function formatIrr(v) {
+    if (v >= 100) return v.toFixed(0);
+    if (v >= 10) return v.toFixed(1);
+    if (v >= 1) return v.toFixed(2);
+    if (v >= 0.01) return v.toFixed(3);
+    return v.toExponential(1);
+}
+function levelLabel(v) { return v >= 1 ? `${v} mW/mm²` : `${v * 1000} µW/mm²`; }
+
+let state = null;
+
+function draw() {
+    const { sim, p, logMin, logMax } = state;
+    const canvas = document.getElementById('map');
+    const css = getComputedStyle(document.documentElement);
+    const ink = css.getPropertyValue('--mm-ink').trim() || '#16202b';
+    const inkSoft = css.getPropertyValue('--mm-ink-soft').trim() || '#4a5866';
+    const line = css.getPropertyValue('--mm-line').trim() || '#e1e6eb';
+
+    const W = 760;
+    const m = { left: 64, right: 16, top: 46, bottom: 44 };
+    const plotW = W - m.left - m.right;
+    const plotH = Math.round(plotW * p.maxDepth / (2 * p.halfWidth));
+    const H = m.top + plotH + m.bottom;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.aspectRatio = `${W} / ${H}`;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    state.layout = { m, plotW, plotH, W, H };
+
+    // heatmap
+    const img = ctx.createImageData(Math.round(plotW * dpr), Math.round(plotH * dpr));
+    const iw = img.width, ih = img.height;
+    const { E, nz, nr } = sim;
+    for (let py = 0; py < ih; py++) {
+        const zf = py / (ih - 1) * (nz - 1);
+        const iz = Math.min(Math.floor(zf), nz - 2), fz = zf - iz;
+        for (let px = 0; px < iw; px++) {
+            const rf = Math.abs((px / (iw - 1)) * 2 - 1) * (nr - 1);
+            const ir = Math.min(Math.floor(rf), nr - 2), fr = rf - ir;
+            const v = (E[iz * nr + ir] * (1 - fr) + E[iz * nr + ir + 1] * fr) * (1 - fz)
+                    + (E[(iz + 1) * nr + ir] * (1 - fr) + E[(iz + 1) * nr + ir + 1] * fr) * fz;
+            const t = v > 0 ? (Math.log10(v) - logMin) / (logMax - logMin) : 0;
+            const [r, g, b] = rampColor(t);
+            const o = (py * iw + px) * 4;
+            img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
         }
+    }
+    ctx.putImageData(img, Math.round(m.left * dpr), Math.round(m.top * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        function calculateBSF(z, rho, params) {
-            const { scatteringCoeff, anisotropyFactor, absorptionCoeff, refractiveIndex } = params;
-            
-            // Convert units (z in micrometers, coefficients in cm^-1)
-            const z_cm = z / 10000; // μm to cm
-            const rho_cm = rho / 10000; // μm to cm
-            
-            const mu_s = scatteringCoeff;
-            const mu_a = absorptionCoeff;
-            const g = anisotropyFactor;
-            const n = refractiveIndex;
-            
-            // Reduced scattering coefficient
-            const mu_s_prime = mu_s * (1 - g);
-            
-            // Speed of light in medium (approximation)
-            const c = 3e10 / n; // cm/s
-            
-            // Time-independent spatial distribution (Eq. 2)
-            const spatial_factor = (3 / (4 * Math.PI * c * z_cm)) * 
-                                 Math.exp(-3 * rho_cm * rho_cm / (4 * c * z_cm));
-            
-            // Absorption attenuation
-            const absorption_factor = Math.exp(-mu_a * z_cm);
-            
-            // Scattering attenuation (simplified)
-            const scattering_factor = Math.exp(-mu_s_prime * z_cm);
-            
-            // Combined intensity
-            let intensity = spatial_factor * absorption_factor * scattering_factor;
-            
-            // Add unscattered component for small depths
-            if (z_cm < 0.01) { // Less than 100 μm
-                const unscattered = Math.exp(-(mu_s + mu_a) * z_cm);
-                intensity += unscattered;
-            }
-            
-            if (isNaN(intensity) || intensity < 0) {
-                console.log('Invalid intensity:', intensity, 'for z:', z, 'rho:', rho);
-                intensity = 0;
-            }
+    const X = r => m.left + plotW / 2 + r / p.halfWidth * plotW / 2;
+    const Y = z => m.top + z / p.maxDepth * plotH;
 
-            return Math.max(0, intensity);
+    // contour lines (marching squares on the mirrored grid)
+    const tip = state.tip;
+    ctx.lineWidth = 1.5;
+    ctx.font = '600 12px "Inter Variable", system-ui, sans-serif';
+    const labelBoxes = [];
+    for (const level of LEVELS) {
+        if (level >= tip || level < Math.pow(10, logMin)) continue;
+        ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+        const segs = contourSegments(sim, level);
+        const lum = (Math.log10(level) - logMin) / (logMax - logMin);
+        ctx.strokeStyle = lum > 0.55 ? 'rgba(255,255,255,0.9)' : ink;
+        ctx.beginPath();
+        for (const [r1, z1, r2, z2] of segs) {
+            ctx.moveTo(X(r1), Y(z1)); ctx.lineTo(X(r2), Y(z2));
+            ctx.moveTo(X(-r1), Y(z1)); ctx.lineTo(X(-r2), Y(z2));
         }
-
-        function runSimulation() {
-            // Get parameters
-            const params = {
-                fiberDiameter: parseFloat(document.getElementById('fiberDiameter').value),
-                numericalAperture: parseFloat(document.getElementById('numericalAperture').value),
-                wavelength: parseFloat(document.getElementById('wavelength').value),
-                scatteringCoeff: parseFloat(document.getElementById('scatteringCoeff').value),
-                anisotropyFactor: parseFloat(document.getElementById('anisotropyFactor').value),
-                absorptionCoeff: parseFloat(document.getElementById('absorptionCoeff').value),
-                refractiveIndex: parseFloat(document.getElementById('refractiveIndex').value),
-                maxDepth: parseFloat(document.getElementById('maxDepth').value),
-                resolution: parseFloat(document.getElementById('resolution').value)
-            };
-
-            // Calculate fiber properties
-            const fiberRadius = params.fiberDiameter / 2;
-            const divergenceAngle = Math.asin(params.numericalAperture / params.refractiveIndex);
-
-            // Create simulation grid
-            const width = 600;
-            const height = 400;
-            const maxRadius = 300; // μm
-            
-            const intensityData = [];
-            let maxIntensity = 0;
-
-            // Calculate intensity distribution
-            for (let y = 0; y < height; y++) {
-                const row = [];
-                const z = (y / height) * params.maxDepth; // depth in μm
-                
-                for (let x = 0; x < width; x++) {
-                    const rho = ((x - width/2) / (width/2)) * maxRadius; // radial distance in μm
-                    
-                    let intensity = 0;
-                    
-                    if (Math.abs(rho) <= fiberRadius && z < 10) {
-                        // Direct fiber illumination
-                        intensity = 1.0;
-                    } else {
-                        // Scattered light using BSF
-                        intensity = calculateBSF(z, Math.abs(rho), params);
-                    }
-                    
-                    // Apply fiber spatial profile (within fiber area)
-                    if (Math.abs(rho) <= fiberRadius) {
-                        intensity = Math.max(intensity, Math.exp(-z / 50)); // Direct transmission
-                    }
-                    
-                    row.push(intensity);
-                    maxIntensity = Math.max(maxIntensity, intensity);
-                }
-                intensityData.push(row);
-            }
-
-            // Normalize data
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    intensityData[y][x] /= maxIntensity;
-                }
-            }
-
-            simulationData = { intensityData, params, maxIntensity };
-            
-            // Update visualization
-            drawHeatmap(intensityData, width, height);
-            updateResults(intensityData, params);
-        }
-
-        function drawHeatmap(data, width, height) {
-            console.log('drawHeatmap called with:', data.length, width, height);
-            const canvas = document.getElementById('heatmapCanvas');
-            const ctx = canvas.getContext('2d');
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            const imageData = ctx.createImageData(width, height);
-            const colors = generateColorMap(256);
-            console.log('Generated colors:', colors.length, 'first few:', colors.slice(0, 3));
-            
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const intensity = data[y][x];
-                    const colorIndex = Math.floor(intensity * 255);
-
-                    // Debug logging - only log first few to avoid spam
-                    if (y === 0 && x < 3) {
-                        console.log(`Pixel [${x},${y}]: intensity=${intensity}, colorIndex=${colorIndex}`);
-                    }
-
-                    const color = colors[Math.min(Math.max(colorIndex, 0), colors.length - 1)];
-                    
-                    // Check if color is undefined
-                    if (color === undefined && y === 0 && x < 3) {
-                        console.log('Undefined color at index:', colorIndex, 'colors length:', colors.length);
-                    }
-
-                    // Extract RGB values
-                    const rgb = color ? color.match(/\d+/g) : ['0', '0', '0'];
-                    if (!rgb || rgb.length < 3) {
-                        rgb = ['0', '0', '0']; // fallback to black
-                    }
-                    const pixelIndex = (y * width + x) * 4;
-                    
-                    imageData.data[pixelIndex] = parseInt(rgb[0]);     // R
-                    imageData.data[pixelIndex + 1] = parseInt(rgb[1]); // G
-                    imageData.data[pixelIndex + 2] = parseInt(rgb[2]); // B
-                    imageData.data[pixelIndex + 3] = 255;              // A
-                }
-            }
-            
-            ctx.putImageData(imageData, 0, 0);
-            
-            // Add axis labels
-            ctx.font = '12px Arial';
-            ctx.fillStyle = 'black';
-            ctx.fillText('Radial Distance (μm)', width/2 - 50, height + 15);
-            
-            // Add depth markers
-            for (let i = 0; i <= 5; i++) {
-                const y = (i / 5) * height;
-                const depth = (i / 5) * parseFloat(document.getElementById('maxDepth').value);
-                ctx.fillText(`${Math.round(depth)}μm`, width + 10, y + 4);
+        ctx.stroke();
+        // direct label where the contour crosses the axis
+        const zAxis = axisCrossing(sim, level);
+        if (zAxis !== null && Y(zAxis) < m.top + plotH - 8) {
+            const text = levelLabel(level);
+            const tw = ctx.measureText(text).width;
+            const lx = X(0) + 6, ly = Y(zAxis) - 5;
+            if (!labelBoxes.some(b => Math.abs(b - ly) < 15)) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                ctx.fillRect(lx - 3, ly - 11, tw + 6, 15);
+                ctx.fillStyle = ink;
+                ctx.fillText(text, lx, ly);
+                labelBoxes.push(ly);
             }
         }
+    }
 
-        function updateResults(data, params) {
-            // Calculate mean free path
-            const meanFreePath = 10000 / params.scatteringCoeff; // Convert cm^-1 to μm
-            document.getElementById('meanFreePath').textContent = `${Math.round(meanFreePath)} μm`;
-            
-            // Find depth where intensity drops to specific percentages
-            const depths = findIntensityDepths(data, params.maxDepth);
-            document.getElementById('depth50').textContent = `${Math.round(depths.depth50)} μm`;
-            document.getElementById('depth10').textContent = `${Math.round(depths.depth10)} μm`;
-            document.getElementById('depth1').textContent = `${Math.round(depths.depth1)} μm`;
+    // fiber
+    const a = p.fiberDiameter / 2;
+    ctx.fillStyle = '#c3cbd3';
+    ctx.fillRect(X(-a), m.top - 30, X(a) - X(-a), 30);
+    ctx.strokeStyle = inkSoft; ctx.lineWidth = 1;
+    ctx.strokeRect(X(-a) + 0.5, m.top - 30 + 0.5, X(a) - X(-a) - 1, 29.5);
+
+    // axes
+    ctx.strokeStyle = line; ctx.lineWidth = 1;
+    ctx.strokeRect(m.left + 0.5, m.top + 0.5, plotW - 1, plotH - 1);
+    ctx.fillStyle = inkSoft;
+    ctx.font = '12px "Inter Variable", system-ui, sans-serif';
+    const zStep = niceStep(p.maxDepth / 5);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let z = 0; z <= p.maxDepth + 1e-6; z += zStep) {
+        ctx.fillText(`${Math.round(z)}`, m.left - 8, Y(z));
+        ctx.beginPath(); ctx.moveTo(m.left - 4, Y(z)); ctx.lineTo(m.left, Y(z)); ctx.stroke();
+    }
+    const rStep = niceStep(p.halfWidth / 3);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let r = -Math.floor(p.halfWidth / rStep) * rStep; r <= p.halfWidth + 1e-6; r += rStep) {
+        if (X(r) - m.left < 18) continue;   // keep clear of the depth labels in the corner
+        ctx.fillText(`${Math.round(r)}`, X(r), m.top + plotH + 7);
+        ctx.beginPath(); ctx.moveTo(X(r), m.top + plotH); ctx.lineTo(X(r), m.top + plotH + 4); ctx.stroke();
+    }
+    ctx.fillText('Lateral distance from fiber axis (µm)', m.left + plotW / 2, m.top + plotH + 25);
+    ctx.save();
+    ctx.translate(16, m.top + plotH / 2); ctx.rotate(-Math.PI / 2);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Depth below fiber tip (µm)', 0, 0);
+    ctx.restore();
+}
+
+function niceStep(raw) {
+    const p10 = Math.pow(10, Math.floor(Math.log10(raw)));
+    for (const s of [1, 2, 2.5, 5, 10]) if (s * p10 >= raw) return s * p10;
+    return 10 * p10;
+}
+
+function contourSegments(sim, level) {
+    const { E, rs, zs, nz, nr } = sim;
+    const segs = [];
+    const lerp = (a, b, va, vb) => a + (b - a) * (level - va) / (vb - va);
+    for (let i = 0; i < nz - 1; i++) {
+        for (let j = 0; j < nr - 1; j++) {
+            const v00 = E[i * nr + j], v01 = E[i * nr + j + 1], v10 = E[(i + 1) * nr + j], v11 = E[(i + 1) * nr + j + 1];
+            const idx = (v00 >= level ? 1 : 0) | (v01 >= level ? 2 : 0) | (v11 >= level ? 4 : 0) | (v10 >= level ? 8 : 0);
+            if (idx === 0 || idx === 15) continue;
+            const r0 = rs[j], r1 = rs[j + 1], z0 = zs[i], z1 = zs[i + 1];
+            const top = [lerp(r0, r1, v00, v01), z0], right = [r1, lerp(z0, z1, v01, v11)];
+            const bottom = [lerp(r0, r1, v10, v11), z1], left = [r0, lerp(z0, z1, v00, v10)];
+            const table = { 1: [[left, top]], 2: [[top, right]], 3: [[left, right]], 4: [[right, bottom]], 5: [[left, top], [right, bottom]],
+                6: [[top, bottom]], 7: [[left, bottom]], 8: [[left, bottom]], 9: [[top, bottom]], 10: [[left, bottom], [top, right]],
+                11: [[right, bottom]], 12: [[left, right]], 13: [[top, right]], 14: [[left, top]] };
+            for (const [p1, p2] of table[idx]) segs.push([p1[0], p1[1], p2[0], p2[1]]);
         }
+    }
+    return segs;
+}
 
-        function findIntensityDepths(data, maxDepth) {
-            const centerX = Math.floor(data[0].length / 2);
-            const height = data.length;
-            
-            let depth50 = maxDepth, depth10 = maxDepth, depth1 = maxDepth;
-            
-            for (let y = 0; y < height; y++) {
-                const depth = (y / height) * maxDepth;
-                const intensity = data[y][centerX];
-                
-                if (intensity >= 0.5 && depth50 === maxDepth) depth50 = depth;
-                if (intensity >= 0.1 && depth10 === maxDepth) depth10 = depth;
-                if (intensity >= 0.01 && depth1 === maxDepth) depth1 = depth;
-            }
-            
-            return { depth50, depth10, depth1 };
-        }
+// first depth where the on-axis irradiance falls below `level`
+function axisCrossing(sim, level) {
+    const { E, zs, nz, nr } = sim;
+    for (let i = 1; i < nz; i++) {
+        const a = E[(i - 1) * nr], b = E[i * nr];
+        if (a >= level && b < level) return zs[i - 1] + (zs[i] - zs[i - 1]) * (a - level) / (a - b);
+    }
+    return null;
+}
 
-        // Initialize the application
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeColorbar();
-            runSimulation(); // Run initial simulation with default parameters
-        });
-    </script>
+function drawColorbar() {
+    const { logMin, logMax } = state;
+    const cb = document.getElementById('colorbar');
+    const ctx = cb.getContext('2d');
+    for (let x = 0; x < cb.width; x++) {
+        const [r, g, b] = rampColor(x / (cb.width - 1));
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillRect(x, 0, 1, cb.height);
+    }
+    const ticks = document.getElementById('colorbarTicks');
+    ticks.innerHTML = '';
+    for (let e = Math.ceil(logMin); e <= Math.floor(logMax); e++) {
+        const s = document.createElement('span');
+        s.style.left = `${(e - logMin) / (logMax - logMin) * 100}%`;
+        s.textContent = formatIrr(Math.pow(10, e));
+        ticks.appendChild(s);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Inputs and update loop
+// ---------------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+const num = id => parseFloat($(id).value);
+
+function applyTissue() {
+    const tissue = $('tissue').value;
+    const fromBlood = tissue === 'striatum' || tissue === 'bulb';
+    for (const id of ['bloodVolume', 'oxygenation', 'hbConc']) $(id).disabled = !fromBlood;
+    $('scatteringCoeff').disabled = tissue !== 'custom';
+    $('absorptionCoeff').disabled = tissue !== 'custom';
+    if (fromBlood) {
+        const g = num('anisotropy');
+        const lambda = num('wavelength');
+        const musRed = reducedScattering(lambda);
+        $('scatteringCoeff').value = (musRed / (1 - g)).toFixed(1);
+        const mua = num('bloodVolume') / 100 * bloodAbsorption(lambda, num('oxygenation') / 100, num('hbConc'));
+        $('absorptionCoeff').value = mua.toFixed(2);
+    }
+}
+
+function choosePreset(name) {
+    const preset = PRESETS[name];
+    if (preset) for (const [k, v] of Object.entries(preset)) $(k).value = v;
+}
+
+function updateDerived(p) {
+    const mfp = 1e4 / p.mus, tmfp = 1e4 / (p.mus * (1 - p.g));
+    const absLen = p.mua > 0 ? (10 / p.mua).toFixed(2) + ' mm' : '∞';
+    $('derived').innerHTML = `Scattering length <b>${mfp.toFixed(0)} µm</b> · transport length <b>${tmfp.toFixed(0)} µm</b> · absorption length <b>${absLen}</b> · emission half-angle <b>${(Math.asin(Math.min(p.NA / p.n, 1)) * 180 / Math.PI).toFixed(1)}°</b>`;
+}
+
+function readParams() {
+    return {
+        power: num('power'), fiberDiameter: num('fiberDiameter'), NA: num('numericalAperture'), n: num('refractiveIndex'),
+        mus: num('scatteringCoeff'), mua: num('absorptionCoeff'), g: num('anisotropy'),
+        maxDepth: num('maxDepth'), threshold: num('threshold'),
+    };
+}
+
+function valid(p) {
+    return Object.values(p).every(Number.isFinite) && p.power > 0 && p.fiberDiameter > 0 && p.NA > 0 && p.NA < p.n
+        && p.mus > 0 && p.mua >= 0 && p.g > 0 && p.g < 1 && p.maxDepth > 0 && p.threshold > 0;
+}
+
+function run() {
+    applyTissue();
+    const p = readParams();
+    if (!valid(p)) return;
+    p.halfWidth = Math.round(p.maxDepth * 0.6);
+    updateDerived(p);
+    const sim = simulate(p, 221, 181);
+    // tip value: mean over the core at z = 0
+    let s = 0, c = 0;
+    for (let j = 0; j < sim.nr; j++) if (sim.rs[j] <= p.fiberDiameter / 2 * 0.9) { s += sim.E[j]; c++; }
+    const tip = c ? s / c : sim.E[0];
+    let peak = 0; for (const v of sim.E) if (v > peak) peak = v;
+    const logMax = Math.log10(Math.max(peak, 1e-6));
+    const logMin = logMax - 5;
+    state = { sim, p, tip, logMin, logMax };
+    draw();
+    drawColorbar();
+
+    const fmtDepth = z => z === null ? `> ${p.maxDepth} µm` : `${Math.round(z)} µm`;
+    $('resTip').textContent = `${formatIrr(tip)} mW/mm²`;
+    $('res50').textContent = fmtDepth(axisCrossing(sim, 0.5 * sim.E[0]));
+    $('res10').textContent = fmtDepth(axisCrossing(sim, 0.1 * sim.E[0]));
+    $('res1').textContent = fmtDepth(axisCrossing(sim, 0.01 * sim.E[0]));
+    $('resThreshold').textContent = p.threshold > sim.E[0] ? 'not reached' : fmtDepth(axisCrossing(sim, p.threshold));
+    $('resThresholdNote').textContent = `≥ ${formatIrr(p.threshold)} mW/mm² on the fiber axis`;
+    $('vizSummary').textContent = `${p.power} mW, ${p.fiberDiameter} µm core, NA ${p.NA} · log scale`;
+}
+
+// Debounced update (a timer rather than requestAnimationFrame, which browsers pause in background tabs).
+let pending = null;
+function schedule() {
+    clearTimeout(pending);
+    pending = setTimeout(() => { pending = null; run(); }, 40);
+}
+
+function showTooltip(ev) {
+    if (!state || !state.layout) return;
+    const canvas = $('map');
+    const rect = canvas.getBoundingClientRect();
+    const { m, plotW, plotH, W } = state.layout;
+    const sx = (ev.clientX - rect.left) * W / rect.width;
+    const sy = (ev.clientY - rect.top) * W / rect.width;
+    const tip = $('tooltip');
+    if (sx < m.left || sx > m.left + plotW || sy < m.top || sy > m.top + plotH) { tip.style.display = 'none'; return; }
+    const r = ((sx - m.left) / plotW * 2 - 1) * state.p.halfWidth;
+    const z = (sy - m.top) / plotH * state.p.maxDepth;
+    const { E, nz, nr } = state.sim;
+    const iz = Math.round(z / state.p.maxDepth * (nz - 1)), ir = Math.round(Math.abs(r) / state.p.halfWidth * (nr - 1));
+    const v = E[iz * nr + ir];
+    tip.innerHTML = `<b>${formatIrr(v)} mW/mm²</b><br>depth ${Math.round(z)} µm · lateral ${Math.round(r)} µm`;
+    const box = $('vizContent').getBoundingClientRect();
+    tip.style.left = `${ev.clientX - box.left}px`;
+    tip.style.top = `${ev.clientY - box.top}px`;
+    tip.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    $('controls').addEventListener('input', ev => {
+        if (ev.target.id === 'tissue') choosePreset(ev.target.value);
+        schedule();
+    });
+    $('controls').addEventListener('change', ev => {
+        if (ev.target.id === 'tissue') { choosePreset(ev.target.value); schedule(); }
+    });
+    $('reset').addEventListener('click', () => {
+        for (const [k, v] of Object.entries(CHAPTER_EXAMPLE)) $(k).value = v;
+        schedule();
+    });
+    $('map').addEventListener('mousemove', showTooltip);
+    $('map').addEventListener('mouseleave', () => { $('tooltip').style.display = 'none'; });
+    run();
+});
+</script>
 </body>
 </html>
