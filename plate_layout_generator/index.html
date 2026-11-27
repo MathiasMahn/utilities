@@ -3,15 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plate Layout Generator</title>
-<style>
+<title>Plate Layout Generator · Mahn Research Group</title>
+<link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../assets/mahn.css">
+    <style>
   :root {
-    --ink: #1b1f24;
-    --muted: #6b7480;
-    --line: #d8dde3;
-    --bg: #f4f6f8;
-    --panel: #ffffff;
-    --accent: #156082;
+    --ink: var(--mm-ink);
+    --muted: var(--mm-ink-soft);
+    --line: var(--mm-line);
+    --bg: var(--mm-paper-alt);
+    --panel: var(--mm-paper);
+    --accent: var(--mm-accent);
     /* A4 landscape (297 x 210mm) minus the 10mm @page margins on each side,
        minus 2mm of slack: a box exactly the size of the printable area can
        round up and spill a second, blank page. Screen and print use the same
@@ -19,13 +21,7 @@
     --page-w: 275mm;
     --page-h: 188mm;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: "Aptos Narrow", "Segoe UI", system-ui, sans-serif;
-    color: var(--ink);
-    background: var(--bg);
-  }
+  body { background: var(--bg); }
 
   /* ---------- controls (screen only) ---------- */
   .controls {
@@ -36,28 +32,32 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 14px;
-    padding: 14px 22px;
+    padding: 12px var(--mm-gutter);
     background: var(--panel);
     border-bottom: 1px solid var(--line);
   }
-  .controls h1 {
-    margin: 0 auto 0 0;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: .02em;
+  .controls-spacer { margin-right: auto; }
+  .controls label { font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+  button, select, input[type=file] { font: inherit; font-size: 14px; }
+  select { padding: 5px 8px; }
+  input[type=file]::file-selector-button {
+    font: inherit; font-size: 14px; margin-right: 10px; padding: 6px 14px; cursor: pointer;
+    border: 1px solid var(--mm-accent); border-radius: 999px; background: var(--panel); color: var(--mm-accent-strong);
   }
-  .controls label { font-size: 13px; color: var(--muted); }
-  button, select, input[type=file] { font: inherit; font-size: 13px; }
+  input[type=file]::file-selector-button:hover { background: var(--mm-accent); color: #fff; }
   button {
-    padding: 7px 14px;
-    border: 1px solid var(--line);
-    border-radius: 6px;
+    padding: 7px 16px;
+    border: 1px solid var(--mm-accent);
+    border-radius: 999px;
     background: var(--panel);
+    color: var(--mm-accent-strong);
+    font-weight: 500;
     cursor: pointer;
   }
   button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--mm-accent-strong); }
   button:disabled { opacity: .45; cursor: default; }
-  .msg { padding: 10px 22px; font-size: 13px; color: #a3341f; background: #fdeeea; }
+  .msg { padding: 10px var(--mm-gutter); font-size: 14px; color: #a3341f; background: var(--mm-bad-wash); }
   .msg:empty { display: none; }
 
   .drop {
@@ -66,24 +66,30 @@
     padding: 48px 24px;
     text-align: center;
     color: var(--muted);
-    border: 2px dashed var(--line);
-    border-radius: 12px;
+    border: 2px dashed #cfd7df;
+    border-radius: var(--mm-radius);
     background: var(--panel);
   }
-  .drop.over { border-color: var(--accent); color: var(--accent); }
-  .drop strong { display: block; margin-bottom: 6px; font-size: 16px; color: var(--ink); }
+  .drop.over { border-color: var(--accent); color: var(--accent); background: var(--mm-accent-wash); }
+  .drop strong {
+    display: block; margin-bottom: 6px;
+    font-family: var(--mm-font-display); font-weight: 600; font-size: 1.2rem; color: var(--ink);
+  }
 
   /* ---------- the sheet ----------
      .page is exactly the printable area of A4 landscape minus the 10mm @page
      margins, so what is on screen is literally what lands on the paper.
-     .page-inner is scaled down by JS if the content would ever exceed it. */
+     .page-inner is scaled down by JS if the content would ever exceed it.
+     The sheet keeps its own narrow font so labels fit the wells. */
   .page {
     width: var(--page-w);
     height: var(--page-h);
     margin: 24px auto;
     padding: 0;
     overflow: hidden;
-    background: var(--panel);
+    background: #fff;
+    color: #1b1f24;
+    font-family: "Aptos Narrow", "Segoe UI", system-ui, sans-serif;
     box-shadow: 0 2px 14px rgba(0,0,0,.10);
   }
   .page[hidden] { display: none; }
@@ -102,11 +108,11 @@
     gap: 20px;
     padding-bottom: 7px;
     margin-bottom: 8px;
-    border-bottom: 2px solid var(--ink);
+    border-bottom: 2px solid #1b1f24;
     flex: none;
   }
   .sheet-head h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: .01em; }
-  .sheet-head .sub { font-size: 11px; color: var(--muted); text-align: right; line-height: 1.45; }
+  .sheet-head .sub { font-size: 11px; color: #6b7480; text-align: right; line-height: 1.45; }
 
   /* The plate is SVG, not styled divs, for two reasons: preserveAspectRatio
      makes clipping impossible whatever the plate format, and SVG fills are
@@ -124,18 +130,18 @@
     gap: 5px 18px;
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid #d8dde3;
     font-size: 11px;
     flex: none;
   }
   .legend .item { display: flex; align-items: center; gap: 6px; }
   .legend .swatch { width: 13px; height: 13px; flex: none; overflow: visible; }
-  .legend .count { color: var(--muted); }
+  .legend .count { color: #6b7480; }
 
   .sheet-foot {
     margin-top: 7px;
     font-size: 9px;
-    color: var(--muted);
+    color: #6b7480;
     display: flex;
     justify-content: space-between;
     flex: none;
@@ -156,12 +162,33 @@
        tick "Background graphics"; the SVG fills cover the case where they don't. */
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
-</style>
+    </style>
 </head>
 <body>
+<header class="mm-header">
+    <div class="mm-wrap mm-bar">
+        <a class="mm-brand" href="https://mathiasmahn.org/">
+            <img src="../assets/logo-mark.png" alt="" width="30" height="38">
+            <span class="mm-brand-text"><span class="mm-brand-name">Mahn Research Group</span><span class="mm-brand-sub">FMI Basel</span></span>
+        </a>
+        <nav class="mm-nav" aria-label="Main">
+            <a href="../">All utilities</a>
+            <a href="https://mathiasmahn.org/">mathiasmahn.org</a>
+        </nav>
+    </div>
+</header>
+
+<section class="mm-hero">
+    <div class="mm-wrap">
+        <p class="mm-eyebrow">Utilities</p>
+        <h1>Plate Layout Generator</h1>
+        <p class="mm-lead">Turn an Excel plate sheet into a printable one-page A4 layout. Well labels and colours are read straight from the .xlsx — your file never leaves the browser.</p>
+    </div>
+</section>
+
 
 <div class="controls">
-  <h1>Plate Layout Generator</h1>
+  <span class="controls-spacer"></span>
   <input type="file" id="file" accept=".xlsx,.xlsm">
   <label>Sheet <select id="sheetPick" disabled></select></label>
   <label><input type="checkbox" id="showLegend" checked> Legend</label>
@@ -188,6 +215,14 @@
     </div>
   </div>
 </div>
+
+<footer class="mm-footer">
+    <div class="mm-wrap">
+        <span>© Mathias Mahn · Mahn Research Group, FMI Basel</span>
+        <span><a href="https://github.com/MathiasMahn/utilities">Source on GitHub</a> · <a href="https://mathiasmahn.org/">mathiasmahn.org</a></span>
+    </div>
+</footer>
+
 
 <script>
 "use strict";

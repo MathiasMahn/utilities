@@ -3,271 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bpod State Matrix Parser</title>
+    <title>Bpod State Matrix Parser · Mahn Research Group</title>
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+    <link rel="stylesheet" href="../assets/mahn.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
         .container {
-            max-width: 1400px;
+            max-width: var(--mm-wrap);
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+            padding: 1.5rem var(--mm-gutter) 3rem;
         }
 
         .main-content {
-            padding: 30px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            gap: 1.5rem;
         }
 
-        .input-section {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 10px;
-            border: 2px solid #e9ecef;
-        }
-
+        .input-section,
         .output-section {
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 10px;
-            border: 2px solid #e9ecef;
+            background: var(--mm-paper);
+            border: 1px solid var(--mm-line);
+            border-radius: var(--mm-radius);
+            padding: 1.25rem;
+            min-width: 0;
         }
 
         .section-title {
-            font-size: 1.4em;
+            font-family: var(--mm-font-display);
+            font-size: 1.3rem;
             font-weight: 600;
-            margin-bottom: 5px;
-            color: #2c3e50;
+            margin: 0 0 0.9rem;
+            color: var(--mm-ink);
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .icon {
-            width: 24px;
-            height: 24px;
-            background: #3498db;
+            width: 28px;
+            height: 28px;
+            background: var(--mm-accent-wash);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             font-size: 14px;
         }
 
         .input-textarea {
             width: 100%;
             height: 200px;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 15px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+            padding: 12px 14px;
+            font-family: var(--mm-font-mono);
+            font-size: 13px;
             resize: vertical;
-            transition: border-color 0.3s ease;
-            background: white;
-        }
-
-        .input-textarea:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
         .parse-button {
             width: 100%;
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            background: var(--mm-accent);
             color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 1.1em;
+            border: 1px solid var(--mm-accent);
+            padding: 0.7rem 1.5rem;
+            border-radius: 999px;
+            font: inherit;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            margin-top: 1rem;
+            transition: background-color 0.15s;
         }
-
-        .parse-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(46, 204, 113, 0.3);
-        }
-
-        .parse-button:active {
-            transform: translateY(0);
-        }
-
+        .parse-button:hover { background: var(--mm-accent-strong); }
         .parse-button:disabled {
-            background: #95a5a6;
+            background: var(--mm-paper-alt);
+            border-color: var(--mm-line);
+            color: var(--mm-ink-faint);
             cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
+
+        .example-button {
+            width: 100%;
+            margin-top: 0.6rem;
+            padding: 0.55rem 1.2rem;
+            background: var(--mm-paper);
+            color: var(--mm-accent-strong);
+            border: 1px solid var(--mm-accent);
+            border-radius: 999px;
+            font: inherit;
+            font-size: 0.92rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .example-button:hover { background: var(--mm-accent); color: #fff; }
 
         .output-container {
-            background: white;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
+            background: var(--mm-paper);
+            border-radius: 8px;
+            border: 1px solid var(--mm-line);
             max-height: 600px;
             overflow-y: auto;
         }
 
         .parse-log-container {
-            background: white;
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            margin-top: 0px;
+            background: var(--mm-paper);
+            border-radius: 8px;
+            border: 1px solid var(--mm-line);
         }
 
         .output-content {
-            padding: 2px;
-            font-family: 'Courier New', monospace;
+            padding: 4px;
+            font-family: var(--mm-font-mono);
             font-size: 13px;
             line-height: 1.6;
         }
+        .output-content h2, .output-content h3 { font-family: var(--mm-font-display); font-weight: 600; }
 
-        .error-message {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
-        }
-
-        .success-message {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
-        }
-
+        .error-message,
+        .success-message,
         .warning-message {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-family: var(--mm-font-body);
             font-weight: 500;
+            border-left: 4px solid;
             animation: slideIn 0.3s ease;
         }
+        .error-message { background: var(--mm-bad-wash); border-color: var(--mm-signal); color: #8a1c14; }
+        .success-message { background: var(--mm-good-wash); border-color: var(--mm-good); color: #1f5a37; }
+        .warning-message { background: var(--mm-warn-wash); border-color: #d9a21b; color: var(--mm-warn); }
 
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .info-box {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            background: var(--mm-accent-wash);
+            border-left: 4px solid var(--mm-accent);
+            color: var(--mm-ink);
+            padding: 0.9rem 1.1rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
         }
-
-        .info-box h3 {
-            margin-bottom: 10px;
-            font-size: 1.2em;
-        }
-
-        .info-box ul {
-            margin-left: 20px;
-        }
-
-        .info-box li {
-            margin-bottom: 5px;
-        }
+        .info-box h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+        .info-box ul { margin: 0 0 0 1.2rem; padding: 0; }
+        .info-box li { margin-bottom: 0.25rem; }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 5px;
-            margin-bottom: 5px;
+            gap: 6px;
+            margin-bottom: 6px;
         }
 
         .header-stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
-            gap: 5px;
-            margin-bottom: 5px;
+            gap: 6px;
+            margin-bottom: 6px;
         }
 
-        .stat-card {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
+        .stat-card,
         .compact-stat-card {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-            color: white;
-            padding: 10px 15px;
+            background: var(--mm-accent-wash);
+            color: var(--mm-ink);
+            border: 1px solid #cfe2f1;
             border-radius: 8px;
             text-align: center;
+            font-family: var(--mm-font-body);
         }
+        .stat-card { padding: 15px; }
+        .compact-stat-card { padding: 10px 15px; }
 
         .stat-value {
             font-size: 1.6em;
-            font-weight: bold;
+            font-weight: 700;
+            color: var(--mm-accent-strong);
             margin-bottom: 5px;
         }
 
         .compact-stat-value {
             font-size: 1.4em;
-            font-weight: bold;
+            font-weight: 700;
+            color: var(--mm-accent-strong);
             margin-bottom: 3px;
         }
 
         .compact-stat-label {
-            font-size: 1.4em;
-            font-weight: bold;
+            font-size: 1.1em;
+            font-weight: 600;
         }
 
         .loading {
@@ -291,29 +217,44 @@
         }
 
         @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+            .main-content { grid-template-columns: 1fr; }
         }
 
         .format-example {
-            background: #f8f9fa;
-            border-left: 4px solid #3498db;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 0 10px 10px 0;
-            font-family: 'Courier New', monospace;
+            background: var(--mm-paper-alt);
+            border-left: 4px solid var(--mm-accent);
+            padding: 0.9rem 1rem;
+            margin: 1rem 0 0;
+            border-radius: 0 8px 8px 0;
+            font-family: var(--mm-font-mono);
             font-size: 12px;
             overflow-x: auto;
         }
     </style>
 </head>
 <body>
+<header class="mm-header">
+    <div class="mm-wrap mm-bar">
+        <a class="mm-brand" href="https://mathiasmahn.org/">
+            <img src="../assets/logo-mark.png" alt="" width="30" height="38">
+            <span class="mm-brand-text"><span class="mm-brand-name">Mahn Research Group</span><span class="mm-brand-sub">FMI Basel</span></span>
+        </a>
+        <nav class="mm-nav" aria-label="Main">
+            <a href="../">All utilities</a>
+            <a href="https://mathiasmahn.org/">mathiasmahn.org</a>
+        </nav>
+    </div>
+</header>
+
+<section class="mm-hero">
+    <div class="mm-wrap">
+        <p class="mm-eyebrow">Utilities</p>
+        <h1>Bpod State Matrix Parser</h1>
+        <p class="mm-lead">Paste the bytes sent to a Bpod 2+ state machine and get a readable breakdown of its states, timers, counters and conditions.</p>
+    </div>
+</section>
+
     <div class="container">
-        <div class="header">
-            <h1>🧠 Bpod 2+ State Matrix Parser</h1>
-            <p>State machine analyzer</p>
-        </div>
 
         <div class="main-content">
             <div class="input-section">
@@ -365,7 +306,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
 
                 <div id="outputContainer" class="output-container">
                     <div class="output-content" id="outputContent">
-                        <div style="text-align: center; color: #7f8c8d; padding: 40px;">
+                        <div style="text-align: center; color: var(--mm-ink-faint); padding: 40px; font-family: var(--mm-font-body);">
                             <div style="font-size: 3em; margin-bottom: 20px;">🎯</div>
                             <h3>Ready to Parse</h3>
                             <p>Paste your Bpod state matrix data and click parse to begin analysis.</p>
@@ -375,6 +316,14 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
             </div>
         </div>
     </div>
+
+<footer class="mm-footer">
+    <div class="mm-wrap">
+        <span>© Mathias Mahn · Mahn Research Group, FMI Basel</span>
+        <span><a href="https://github.com/MathiasMahn/utilities">Source on GitHub</a> · <a href="https://mathiasmahn.org/">mathiasmahn.org</a></span>
+    </div>
+</footer>
+
 
     <script>
         class BpodStateMatrixParser {
@@ -1306,8 +1255,8 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                 }
                 
                 outputElement.innerHTML = statsHtml + `
-                    <h2 style="margin: 20px 0 0 0; color: #2c3e50;">📋 Detailed Parse Log</h2>
-                    <div style="font-family: 'Courier New', monospace; font-size: 16px; line-height: 1.4; white-space: pre; margin-top: -20px;">
+                    <h2 style="margin: 20px 0 0 0; color: var(--mm-ink); font-size: 1.2rem;">📋 Detailed Parse Log</h2>
+                    <div style="font-family: var(--mm-font-mono); font-size: 14px; line-height: 1.4; white-space: pre; margin-top: -20px;">
                     ${result.output}
                     </div>
                 `;
@@ -1317,9 +1266,9 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
                     <div class="error-message">
                         ❌ Parse Error: ${error.message}
                     </div>
-                    <div style="background: white; border-radius: 10px; border: 2px solid #e74c3c; margin-top: 20px; padding: 20px;">
-                        <h3 style="color: #e74c3c; margin-bottom: 15px;">🔧 Troubleshooting Tips:</h3>
-                        <ul style="color: #666; line-height: 1.6;">
+                    <div style="background: var(--mm-paper); border-radius: 8px; border: 1px solid var(--mm-signal); margin-top: 20px; padding: 20px; font-family: var(--mm-font-body);">
+                        <h3 style="color: var(--mm-signal); margin: 0 0 12px;">🔧 Troubleshooting Tips:</h3>
+                        <ul style="color: var(--mm-ink-soft); line-height: 1.6;">
                             <li>Ensure your data starts with the command tuple: <code>([67, runASAP, use255Signal], 'uint8')</code></li>
                             <li>First byte (67) = 'C' opcode for state matrix</li>
                             <li>Second byte = RunStateMatrixASAP flag (0 or 1)</li>
@@ -1356,27 +1305,7 @@ b'C\x00\x00n\x00\x03\x02\x00\x00\x01\x02\x03...'
             const inputSection = document.querySelector('.input-section');
             const exampleButton = document.createElement('button');
             exampleButton.innerHTML = '📄 Load Example Data';
-            exampleButton.style.cssText = `
-                width: 100%;
-                background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-size: 0.9em;
-                font-weight: 500;
-                cursor: pointer;
-                margin-top: 10px;
-                transition: all 0.3s ease;
-            `;
-            exampleButton.onmouseover = function() {
-                this.style.transform = 'translateY(-1px)';
-                this.style.boxShadow = '0 5px 15px rgba(155, 89, 182, 0.3)';
-            };
-            exampleButton.onmouseout = function() {
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
-            };
+            exampleButton.className = 'example-button';
             exampleButton.onclick = loadExample;
             
             inputSection.appendChild(exampleButton);
