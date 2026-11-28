@@ -159,6 +159,17 @@
     <div class="main-grid">
         <form class="panel controls" id="controls" onsubmit="return false">
             <div class="control-group">
+                <h3>Model</h3>
+                <div class="input-row">
+                    <select id="model" aria-label="Model">
+                        <option value="bsf" selected>Analytical (BSF): irradiance</option>
+                        <option value="mc">Monte Carlo: fluence rate</option>
+                    </select>
+                </div>
+                <p class="derived" id="modelNote"></p>
+            </div>
+
+            <div class="control-group">
                 <h3>Light source</h3>
                 <div class="input-row"><label for="power">Power at fiber tip <span class="unit">mW</span></label><input type="number" id="power" value="5" min="0.01" max="1000" step="0.1"></div>
                 <div class="input-row"><label for="fiberDiameter">Core diameter <span class="unit">µm</span></label><input type="number" id="fiberDiameter" value="200" min="10" max="1000" step="1"></div>
@@ -189,16 +200,16 @@
             <div class="control-group">
                 <h3>Display</h3>
                 <div class="input-row"><label for="maxDepth">Depth shown <span class="unit">µm</span></label><input type="number" id="maxDepth" value="1000" min="100" max="3000" step="50"></div>
-                <div class="input-row"><label for="threshold">Target irradiance <span class="unit">mW/mm²</span></label><input type="number" id="threshold" value="1" min="0.001" max="1000" step="0.1"></div>
+                <div class="input-row"><label for="threshold">Target light level <span class="unit">mW/mm²</span></label><input type="number" id="threshold" value="1" min="0.001" max="1000" step="0.1"></div>
             </div>
 
             <button type="button" class="mm-btn reset-btn" id="reset">Reset to chapter example</button>
         </form>
 
         <div>
-            <section class="panel viz" aria-label="Irradiance map">
+            <section class="panel viz" aria-label="Light map">
                 <div class="viz-header">
-                    <h2>Irradiance around the fiber tip</h2>
+                    <h2 id="vizTitle">Irradiance around the fiber tip</h2>
                     <p id="vizSummary">Side view through the fiber axis, log scale</p>
                 </div>
                 <div class="viz-content" id="vizContent">
@@ -207,13 +218,13 @@
                     <div class="colorbar-wrap">
                         <canvas id="colorbar" width="600" height="14" aria-hidden="true"></canvas>
                         <div class="colorbar-ticks" id="colorbarTicks"></div>
-                        <div class="colorbar-title">Irradiance (mW/mm²)</div>
+                        <div class="colorbar-title" id="colorbarTitle">Irradiance (mW/mm²)</div>
                     </div>
                 </div>
             </section>
 
             <div class="results" id="results">
-                <div class="result-card"><h4>At the fiber tip</h4><div class="result-value" id="resTip">–</div><div class="result-note">mean over the core</div></div>
+                <div class="result-card"><h4>At the fiber tip</h4><div class="result-value" id="resTip">–</div><div class="result-note" id="resTipNote">mean over the core</div></div>
                 <div class="result-card"><h4>Target reached to</h4><div class="result-value" id="resThreshold">–</div><div class="result-note" id="resThresholdNote">on the fiber axis</div></div>
                 <div class="result-card"><h4>50% of tip value</h4><div class="result-value" id="res50">–</div><div class="result-note">depth on axis</div></div>
                 <div class="result-card"><h4>10% of tip value</h4><div class="result-value" id="res10">–</div><div class="result-note">depth on axis</div></div>
@@ -224,7 +235,11 @@
 
     <section class="panel info-section">
         <h2>About this estimate</h2>
-        <p>The map shows the radiant flux density (irradiance) in a plane through the fiber axis for light leaving a flat-cleaved fiber that touches the tissue. It is computed with the beam-spread-function (BSF) model of McLean et al. (1998), as adapted for optogenetics by Yona et al. (2016): the response to a thin pencil beam, made of unscattered light plus a time-dispersed scattered part, is spread over the fiber's emission cone and over the area of the fiber core.</p>
+        <p>The map shows a side view through the fiber axis for light leaving a flat-cleaved fiber. Two models are available:</p>
+        <ul>
+            <li><strong>Analytical (BSF)</strong> shows the irradiance, the light moving away from the fiber, for a fiber touching the tissue surface. It uses the beam-spread-function model of McLean et al. (1998), as adapted for optogenetics by Yona et al. (2016): the response to a thin pencil beam, made of unscattered light plus a time-dispersed scattered part, is spread over the fiber's emission cone and over the area of the fiber core. It is instant, but it leaves out light scattered backwards.</li>
+            <li><strong>Monte Carlo</strong> shows the fluence rate, the light arriving from all directions, which is what an opsin absorbs. Individual photons are launched from the fiber core into its emission cone and followed through scattering (Henyey–Greenstein phase function) and absorption in tissue that surrounds an implanted fiber on all sides; photons running back into the fiber (core plus cladding, taken as 1.125 × the core diameter) are lost. Fluence rate is tallied from the photons' path lengths in each cell, so backscattered and oblique light are included. The map is noisy at first and sharpens as up to 2 million photons are traced.</li>
+        </ul>
         <h3>Tissue optics</h3>
         <ul>
             <li>Reduced scattering is estimated from the wavelength as µs′ = 2.37·(λ/500 nm)<sup>−1.15</sup> mm⁻¹ (Liu et al. 2015), with anisotropy g = 0.8803, so µs = µs′/(1 − g).</li>
@@ -233,10 +248,9 @@
         </ul>
         <h3>Limitations</h3>
         <ul>
-            <li>This is an analytical approximation for strongly forward-scattering tissue. It treats the emission cone paraxially and ignores light reflected back towards the fiber, so values far from the axis and close to the tip are rough.</li>
-            <li>Checked against a Monte Carlo simulation of photon transport with the same parameters, the on-axis irradiance agrees within about 10% in the first 100 µm, and the model places contours about 15–20% deeper than the Monte Carlo does.</li>
+            <li>The BSF model is an analytical approximation for strongly forward-scattering tissue. It treats the emission cone paraxially and ignores backscattered light. Compared with a Monte Carlo simulation of the same irradiance, it agrees within about 10% in the first 100 µm and places contours about 15–20% deeper.</li>
+            <li>The Monte Carlo model treats the tissue as homogeneous and index-matched to the fiber (no reflections at the fiber face), and stops following photons that wander far outside the displayed area. Single cells far from the fiber stay noisy; the on-axis results average over the central 20 µm.</li>
             <li>Real tissue is not homogeneous; blood vessels and fiber tracts change the light distribution. Use the numbers to plan experiments, not as measurements.</li>
-            <li>Opsins respond to light from all directions (fluence rate), which in scattering tissue is higher than the irradiance shown here.</li>
         </ul>
         <h3>References</h3>
         <ul class="refs">
@@ -585,11 +599,12 @@ function contourSegments(sim, level) {
     return segs;
 }
 
-// first depth where the on-axis irradiance falls below `level`
+// first depth where the on-axis value falls below `level`
 function axisCrossing(sim, level) {
     const { E, zs, nz, nr } = sim;
+    const v = i => sim.axis ? sim.axis[i] : E[i * nr];
     for (let i = 1; i < nz; i++) {
-        const a = E[(i - 1) * nr], b = E[i * nr];
+        const a = v(i - 1), b = v(i);
         if (a >= level && b < level) return zs[i - 1] + (zs[i] - zs[i - 1]) * (a - level) / (a - b);
     }
     return null;
@@ -660,17 +675,49 @@ function valid(p) {
         && p.mus > 0 && p.mua >= 0 && p.g > 0 && p.g < 1 && p.maxDepth > 0 && p.threshold > 0;
 }
 
-function run() {
-    applyTissue();
-    const p = readParams();
-    if (!valid(p)) return;
-    p.halfWidth = Math.round(p.maxDepth * 0.6);
-    updateDerived(p);
-    const sim = simulate(p, 221, 181);
-    // tip value: mean over the core at z = 0
+// ---------------------------------------------------------------------------
+// Monte Carlo photon transport (runs in a Web Worker, see #mcWorker below)
+// ---------------------------------------------------------------------------
+let mcWorker = null;
+function stopMonteCarlo() {
+    if (mcWorker) { mcWorker.terminate(); mcWorker = null; }
+}
+function startMonteCarlo(p) {
+    stopMonteCarlo();
+    const nz = 100, nr = 90;
+    const dz = p.maxDepth / nz, dr = p.halfWidth / nr;
+    const rs = Float64Array.from({ length: nr }, (_, j) => (j + 0.5) * dr);
+    const zs = Float64Array.from({ length: nz }, (_, i) => (i + 0.5) * dz);
+    const src = document.getElementById('mcWorker').textContent;
+    mcWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    mcWorker.onmessage = ({ data }) => {
+        // path length per bin (µm) → fluence rate (mW/mm²): P/N · Σ(w·ℓ) / V
+        const E = new Float64Array(nz * nr);
+        for (let i = 0; i < nz; i++) for (let j = 0; j < nr; j++) {
+            const V = Math.PI * ((j + 1) ** 2 - j ** 2) * dr * dr * dz;    // µm³
+            E[i * nr + j] = p.power / data.photons * data.tally[i * nr + j] / V * 1e6;
+        }
+        // on-axis profile: area-weighted mean over r < 20 µm (single bins are noisy)
+        const nAxis = Math.max(1, Math.round(20 / dr));
+        const axis = new Float64Array(nz);
+        for (let i = 0; i < nz; i++) {
+            let s = 0, w = 0;
+            for (let j = 0; j < nAxis; j++) { const a = (j + 1) ** 2 - j ** 2; s += E[i * nr + j] * a; w += a; }
+            axis[i] = s / w;
+        }
+        const status = `${data.photons.toLocaleString('en-US')} photons${data.done ? '' : ' so far…'}`;
+        render({ E, rs, zs, nz, nr, axis }, p, status);
+    };
+    mcWorker.postMessage({ ...p, nz, nr, maxPhotons: 2e6 });
+}
+
+function render(sim, p, mcStatus) {
+    const mc = Boolean(mcStatus);
+    const axisValue = i => sim.axis ? sim.axis[i] : sim.E[i * sim.nr];
+    // tip value: mean over the core in the first depth step
     let s = 0, c = 0;
     for (let j = 0; j < sim.nr; j++) if (sim.rs[j] <= p.fiberDiameter / 2 * 0.9) { s += sim.E[j]; c++; }
-    const tip = c ? s / c : sim.E[0];
+    const tip = c ? s / c : axisValue(0);
     let peak = 0; for (const v of sim.E) if (v > peak) peak = v;
     const logMax = Math.log10(Math.max(peak, 1e-6));
     const logMin = logMax - 5;
@@ -679,14 +726,37 @@ function run() {
     draw();
     drawColorbar();
 
+    const quantity = mc ? 'Fluence rate' : 'Irradiance';
+    $('vizTitle').textContent = `${quantity} around the fiber tip`;
+    $('colorbarTitle').textContent = `${quantity} (mW/mm²)`;
     const fmtDepth = z => z === null ? `> ${p.maxDepth} µm` : `${Math.round(z)} µm`;
+    const top = axisValue(0);
     $('resTip').textContent = `${formatIrr(tip)} mW/mm²`;
-    $('res50').textContent = fmtDepth(axisCrossing(sim, 0.5 * sim.E[0]));
-    $('res10').textContent = fmtDepth(axisCrossing(sim, 0.1 * sim.E[0]));
-    $('res1').textContent = fmtDepth(axisCrossing(sim, 0.01 * sim.E[0]));
-    $('resThreshold').textContent = p.threshold > sim.E[0] ? 'not reached' : fmtDepth(axisCrossing(sim, p.threshold));
+    $('resTipNote').textContent = mc ? `fluence rate just below the core (irradiance ${formatIrr(p.power / (Math.PI * (p.fiberDiameter / 2000) ** 2))})` : 'mean over the core';
+    $('res50').textContent = fmtDepth(axisCrossing(sim, 0.5 * top));
+    $('res10').textContent = fmtDepth(axisCrossing(sim, 0.1 * top));
+    $('res1').textContent = fmtDepth(axisCrossing(sim, 0.01 * top));
+    $('resThreshold').textContent = p.threshold > top ? 'not reached' : fmtDepth(axisCrossing(sim, p.threshold));
     $('resThresholdNote').textContent = `≥ ${formatIrr(p.threshold)} mW/mm² on the fiber axis`;
-    $('vizSummary').textContent = `${p.power} mW, ${p.fiberDiameter} µm core, NA ${p.NA} · log scale`;
+    $('vizSummary').textContent = `${p.power} mW, ${p.fiberDiameter} µm core, NA ${p.NA} · log scale` + (mc ? ` · ${mcStatus}` : '');
+}
+
+function run() {
+    applyTissue();
+    const p = readParams();
+    if (!valid(p)) return;
+    p.halfWidth = Math.round(p.maxDepth * 0.6);
+    updateDerived(p);
+    const model = $('model').value;
+    $('modelNote').textContent = model === 'mc'
+        ? 'Traces individual photons through scattering and absorption, including light scattered backwards, in tissue all around an implanted fiber. Shows fluence rate (light from all directions), which is what opsins respond to. The map sharpens as more photons are traced.'
+        : 'Fast analytical approximation for forward-scattered light. Shows irradiance (light moving away from the fiber); backscattered light is not included.';
+    if (model === 'mc') {
+        startMonteCarlo(p);
+    } else {
+        stopMonteCarlo();
+        render(simulate(p, 221, 181), p, null);
+    }
 }
 
 // Debounced update (a timer rather than requestAnimationFrame, which browsers pause in background tabs).
@@ -708,7 +778,8 @@ function showTooltip(ev) {
     const r = ((sx - m.left) / plotW * 2 - 1) * state.p.halfWidth;
     const z = (sy - m.top) / plotH * state.p.maxDepth;
     const { E, nz, nr } = state.sim;
-    const iz = Math.round(z / state.p.maxDepth * (nz - 1)), ir = Math.round(Math.abs(r) / state.p.halfWidth * (nr - 1));
+    const iz = Math.min(nz - 1, Math.round(z / state.p.maxDepth * (nz - 1)));
+    const ir = Math.min(nr - 1, Math.round(Math.abs(r) / state.p.halfWidth * (nr - 1)));
     const v = E[iz * nr + ir];
     tip.innerHTML = `<b>${formatIrr(v)} mW/mm²</b><br>depth ${Math.round(z)} µm · lateral ${Math.round(r)} µm`;
     const box = $('vizContent').getBoundingClientRect();
@@ -733,6 +804,85 @@ document.addEventListener('DOMContentLoaded', () => {
     $('map').addEventListener('mouseleave', () => { $('tooltip').style.display = 'none'; });
     run();
 });
+</script>
+
+<!-- Monte Carlo photon transport, run in a Web Worker. Units: µm, cm⁻¹ for the inputs.
+     Geometry: infinite homogeneous tissue around an implanted fiber. Photons start uniformly on the
+     core and uniformly in solid angle inside the emission cone asin(NA/n); scattering follows a
+     Henyey–Greenstein phase function; absorption reduces the photon weight at each interaction
+     (with Russian roulette). Photons running back into the fiber (core + cladding, taken as
+     1.125 × the core diameter) are lost. Fluence is tallied with a track-length estimator: the
+     photon path is sampled every h µm (random start) and w·h is added to the (r, z) cell. -->
+<script type="text/js-worker" id="mcWorker">
+self.onmessage = ({ data: p }) => {
+    const mus = p.mus * 1e-4, mua = p.mua * 1e-4, mut = mus + mua, albedo = mus / mut, g = p.g;
+    const a = p.fiberDiameter / 2, aOuter = 1.125 * a;
+    const cosMax = Math.cos(Math.asin(Math.min(p.NA / p.n, 0.999)));
+    const nz = p.nz, nr = p.nr, zMax = p.maxDepth, rMax = p.halfWidth;
+    const dz = zMax / nz, dr = rMax / nr, invDz = 1 / dz, invDr = 1 / dr;
+    const h = Math.min(dz, dr);
+    const zEscape = 1.5 * zMax, rEscape = 2 * rMax;
+    const tally = new Float64Array(nz * nr);
+    const rand = Math.random;
+
+    function hgCos() {
+        const t = (1 - g * g) / (1 - g + 2 * g * rand());
+        return Math.max(-1, Math.min(1, (1 + g * g - t * t) / (2 * g)));
+    }
+
+    function trace() {
+        const r0 = a * Math.sqrt(rand()), ph = 2 * Math.PI * rand();
+        let x = r0 * Math.cos(ph), y = r0 * Math.sin(ph), z = 0;
+        let uz = 1 - rand() * (1 - cosMax);
+        const st = Math.sqrt(1 - uz * uz), ps = 2 * Math.PI * rand();
+        let ux = st * Math.cos(ps), uy = st * Math.sin(ps);
+        let w = 1;
+        for (let step = 0; step < 20000; step++) {
+            const len = -Math.log(rand()) / mut;
+            // track-length tally along this flight
+            for (let d = rand() * h; d < len; d += h) {
+                const pz = z + uz * d;
+                if (pz < 0 || pz >= zMax) continue;
+                const px = x + ux * d, py = y + uy * d;
+                const ir = (Math.sqrt(px * px + py * py) * invDr) | 0;
+                if (ir < nr) tally[((pz * invDz) | 0) * nr + ir] += w * h;
+            }
+            const z1 = z + uz * len;
+            // running back into the fiber face?
+            if (z >= 0 && z1 < 0) {
+                const t = -z / uz, rx = x + ux * t, ry = y + uy * t;
+                if (rx * rx + ry * ry < aOuter * aOuter) return;
+            }
+            x += ux * len; y += uy * len; z = z1;
+            if (z < 0 && x * x + y * y < aOuter * aOuter) return;     // into the fiber body
+            if (z > zEscape || z < -zEscape || x * x + y * y > rEscape * rEscape) return;
+            w *= albedo;
+            if (w < 1e-3) { if (rand() < 0.1) w *= 10; else return; }
+            const ct = hgCos(), stt = Math.sqrt(Math.max(0, 1 - ct * ct)), phi = 2 * Math.PI * rand();
+            const cp = Math.cos(phi), sp = Math.sin(phi);
+            if (Math.abs(uz) > 0.99999) {
+                ux = stt * cp; uy = stt * sp; uz = (uz > 0 ? 1 : -1) * ct;
+            } else {
+                const tmp = Math.sqrt(1 - uz * uz);
+                const nux = stt * (ux * uz * cp - uy * sp) / tmp + ux * ct;
+                const nuy = stt * (uy * uz * cp + ux * sp) / tmp + uy * ct;
+                uz = -stt * cp * tmp + uz * ct; ux = nux; uy = nuy;
+            }
+        }
+    }
+
+    let photons = 0, last = performance.now();
+    while (photons < p.maxPhotons) {
+        for (let i = 0; i < 1000; i++) trace();
+        photons += 1000;
+        const now = performance.now();
+        const done = photons >= p.maxPhotons;
+        if (done || now - last > 500 || photons === 5000) {
+            self.postMessage({ tally: tally.slice(), photons, done });
+            last = now;
+        }
+    }
+};
 </script>
 </body>
 </html>
